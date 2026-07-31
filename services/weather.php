@@ -26,7 +26,69 @@ function _callApi(string $url, array $headers = []): array
 }
 
 /**
- * Fetches fallback data from Stormglass.io API.
+ * Fetches wave height and sea level (tide signal) from Open-Meteo's free Marine API.
+ * This is the primary source for houle/marée data (same provider as the main forecast,
+ * no API key required).
+ *
+ * @param float $lat
+ * @param float $lng
+ * @return array Raw Open-Meteo marine payload, or [] on failure.
+ */
+function _fetchMarineData(float $lat, float $lng): array
+{
+    $apiUrl = sprintf(
+        "https://marine-api.open-meteo.com/v1/marine?latitude=%s&longitude=%s&hourly=wave_height,sea_level_height_msl&timezone=auto&forecast_days=7",
+        $lat,
+        $lng
+    );
+
+    $apiResult = _callApi($apiUrl);
+    if ($apiResult['http_code'] !== 200 || $apiResult['response'] === false) {
+        return [];
+    }
+
+    $data = json_decode($apiResult['response'], true);
+    if (!isset($data['hourly']['time'])) {
+        return [];
+    }
+
+    return $data;
+}
+
+/**
+ * Derives high-tide timestamps from a continuous sea-level-height series, by finding
+ * local maxima. Used because Open-Meteo does not expose tide extremes directly.
+ *
+ * @param array $times ISO8601 hourly timestamps.
+ * @param array $seaLevels Sea level height (m) for each timestamp, same length as $times.
+ * @return array List of ISO8601 timestamps at high tide.
+ */
+function _extractHighTideTimes(array $times, array $seaLevels): array
+{
+    $highTideTimes = [];
+    $count = count($seaLevels);
+
+    for ($i = 1; $i < $count - 1; $i++) {
+        $previous = $seaLevels[$i - 1];
+        $current = $seaLevels[$i];
+        $next = $seaLevels[$i + 1];
+
+        if ($previous === null || $current === null || $next === null) {
+            continue;
+        }
+
+        if ($current > $previous && $current >= $next) {
+            $highTideTimes[] = $times[$i];
+        }
+    }
+
+    return $highTideTimes;
+}
+
+/**
+ * Fetches fallback wave data from Stormglass.io API. Used only as a last resort if
+ * the Marine API above is unavailable, since Stormglass's free tier has a very low
+ * daily quota.
  * @param float $lat
  * @param float $lng
  * @return array Formatted data compatible with Open-Meteo structure.
@@ -39,7 +101,7 @@ function _fetchStormglassData(float $lat, float $lng): array
 
     $params = 'waveHeight,waveDirection,windSpeed,windDirection,swellHeight';
     $apiUrl = "https://api.stormglass.io/v2/weather/point?lat={$lat}&lng={$lng}&params={$params}";
-    
+
     $apiResult = _callApi($apiUrl, ['Authorization: ' . STORMGLASS_API_KEY]);
 
     if ($apiResult['http_code'] !== 200) {
@@ -56,49 +118,46 @@ function _fetchStormglassData(float $lat, float $lng): array
         'hourly' => [
             'time' => [],
             'wave_height' => [],
-            'wind_speed_10m' => [],
-            'wind_direction_10m' => [],
         ]
     ];
 
     foreach ($data['hours'] as $hourData) {
         // Stormglass gives values in a nested array, we take the first available source (e.g., 'sg')
         $waveHeight = $hourData['waveHeight']['sg'] ?? null;
-        $windSpeed = $hourData['windSpeed']['sg'] ?? null; // in m/s
-        $windDirection = $hourData['windDirection']['sg'] ?? null;
 
         $formattedData['hourly']['time'][] = (new DateTime($hourData['time']))->format('Y-m-d\TH:i');
         $formattedData['hourly']['wave_height'][] = $waveHeight;
-        // Convert wind speed from m/s to km/h
-        $formattedData['hourly']['wind_speed_10m'][] = $windSpeed !== null ? round($windSpeed * 3.6) : null;
-        $formattedData['hourly']['wind_direction_10m'][] = $windDirection;
     }
 
     return $formattedData;
 }
 
 /**
- * Merges fallback data into the primary data source, filling null values.
+ * Fills null values of $field in $primaryData['hourly'] using $secondaryData['hourly'],
+ * matching entries by timestamp.
+ *
  * @param array $primaryData
- * @param array $fallbackData
+ * @param array $secondaryData
+ * @param string $field
  * @return array The merged data.
  */
-function _mergeData(array $primaryData, array $fallbackData): array
+function _mergeByTime(array $primaryData, array $secondaryData, string $field): array
 {
-    if (empty($fallbackData) || !isset($fallbackData['hourly']['time'])) {
+    if (empty($secondaryData['hourly']['time']) || empty($secondaryData['hourly'][$field])) {
         return $primaryData;
     }
 
-    $fallbackMap = array_flip($fallbackData['hourly']['time']);
+    $secondaryMap = array_flip($secondaryData['hourly']['time']);
 
     foreach ($primaryData['hourly']['time'] as $index => $time) {
-        if (isset($fallbackMap[$time])) {
-            $fallbackIndex = $fallbackMap[$time];
-            // If primary data for swell is null, use fallback
-            if ($primaryData['hourly']['wave_height'][$index] === null && $fallbackData['hourly']['wave_height'][$fallbackIndex] !== null) {
-                $primaryData['hourly']['wave_height'][$index] = $fallbackData['hourly']['wave_height'][$fallbackIndex];
-            }
-            // You could add more fallbacks here (e.g., for wind) if needed
+        if (!isset($secondaryMap[$time])) {
+            continue;
+        }
+        $secondaryIndex = $secondaryMap[$time];
+        $secondaryValue = $secondaryData['hourly'][$field][$secondaryIndex] ?? null;
+
+        if (($primaryData['hourly'][$field][$index] ?? null) === null && $secondaryValue !== null) {
+            $primaryData['hourly'][$field][$index] = $secondaryValue;
         }
     }
     return $primaryData;
@@ -125,23 +184,16 @@ function getWeatherData(float $lat, float $lng): array
         }
     }
 
-    // Construction de l'URL de l'API Open-Meteo Marine
+    // Construction de l'URL de l'API Open-Meteo (vent, température de l'eau)
     $forecastApiUrl = sprintf(
-        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=wind_speed_10m,wind_direction_10m,wave_height,sea_surface_temperature&timezone=auto&wind_speed_unit=kmh&forecast_days=7",
-        $lat,
-        $lng
-    );
-    // NOUVEAU: URL dédiée pour les marées
-    $tideApiUrl = sprintf(
-        "https://api.open-meteo.com/v1/tide?latitude=%s&longitude=%s&daily=tide_time_high,tide_time_low&timezone=auto&forecast_days=7",
+        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=wind_speed_10m,wind_direction_10m,sea_surface_temperature&timezone=auto&wind_speed_unit=kmh&forecast_days=7",
         $lat,
         $lng
     );
 
-    // --- 1. Appel à l'API Météo ---
+    // --- 1. Appel à l'API Météo (critique) ---
     $forecastApiResult = _callApi($forecastApiUrl);
 
-    // Gestion des erreurs de l'API Météo (critique)
     if ($forecastApiResult['http_code'] !== 200 || $forecastApiResult['response'] === false) {
         if (file_exists($cacheFile)) {
             $jsonData = file_get_contents($cacheFile);
@@ -162,29 +214,37 @@ function getWeatherData(float $lat, float $lng): array
         return ['error' => true, 'reason' => $weatherData['reason'] ?? 'Impossible de décoder la réponse météo JSON.'];
     }
 
-    // --- 2. Appel à l'API Marées ---
-    $tideApiResult = _callApi($tideApiUrl);
+    $weatherData['hourly']['wave_height'] = array_fill(0, count($weatherData['hourly']['time']), null);
 
-    // --- 3. Fusion des données ---
-    if ($tideApiResult['http_code'] === 200 && $tideApiResult['response']) {
-        $tideData = json_decode($tideApiResult['response'], true);
-        if ($tideData && !isset($tideData['error']) && isset($tideData['daily'])) {
-            $weatherData['daily'] = $tideData['daily']; // Remplacer le 'daily' par celui des marées
-        }
+    // --- 2. Houle + marée : API Marine d'Open-Meteo (gratuite, même fournisseur) ---
+    // Le "tide_time_high" est déduit des maxima locaux du niveau de la mer, car
+    // Open-Meteo n'expose pas directement les heures de pleine mer.
+    $marineData = _fetchMarineData($lat, $lng);
+    if (!empty($marineData['hourly']['time'])) {
+        $weatherData = _mergeByTime($weatherData, $marineData, 'wave_height');
+        $weatherData['daily']['tide_time_high'] = _extractHighTideTimes(
+            $marineData['hourly']['time'],
+            $marineData['hourly']['sea_level_height_msl'] ?? []
+        );
     }
 
-    // --- 4. FALLBACK LOGIC ---
-    // Check if swell data is missing (all values are null)
-    $isSwellMissing = (isset($weatherData['hourly']['wave_height']) && count(array_filter($weatherData['hourly']['wave_height'])) === 0);
+    // --- 3. Repli : si la houle est toujours manquante, Stormglass en dernier recours ---
+    $isSwellMissing = true;
+    foreach ($weatherData['hourly']['wave_height'] as $value) {
+        if ($value !== null) {
+            $isSwellMissing = false;
+            break;
+        }
+    }
 
     if ($isSwellMissing) {
         $fallbackData = _fetchStormglassData($lat, $lng);
         if (!empty($fallbackData)) {
-            $weatherData = _mergeData($weatherData, $fallbackData);
+            $weatherData = _mergeByTime($weatherData, $fallbackData, 'wave_height');
         }
     }
 
-    // --- 5. Mise en cache et retour ---
+    // --- 4. Mise en cache et retour ---
     if (!is_dir(dirname($cacheFile))) {
         mkdir(dirname($cacheFile), 0755, true);
     }

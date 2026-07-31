@@ -18,17 +18,17 @@ function isOffshore(int $windDirection): bool
  *
  * @param DateTime $currentTime L'heure à vérifier.
  * @param array|null $highTideTimes Tableau des timestamps des pleines mers.
- * @return array Statut ('green', 'orange', 'red') et raison.
+ * @return array Statut ('green', 'orange', 'red', 'grey') et raison.
  */
 function getTideStatus(DateTime $currentTime, ?array $highTideTimes): array
 {
-    if ($highTideTimes === null) {
-        return ['status' => 'red', 'reason' => 'Données marée N/A'];
+    if (empty($highTideTimes)) {
+        return ['status' => 'grey', 'reason' => 'Données marée indisponibles'];
     }
 
     foreach ($highTideTimes as $tideTimestamp) {
         if ($tideTimestamp === null) continue;
-        
+
         $highTideTime = new DateTime($tideTimestamp);
         $diff = abs($currentTime->getTimestamp() - $highTideTime->getTimestamp());
 
@@ -78,31 +78,35 @@ function getHourlyAnalysisForSpot(array $weatherData, array $spot): array
             ],
         ];
 
+        $windMissing = ($windSpeed === null || $windDirection === null);
+
         // --- Check for SEA conditions ---
         if (in_array($spot['zone'], ['MER', 'MIXTE'])) {
-            $reasons = [];
-            // Conditions ROUGES impératives
-            if ($swellHeight === null) {
-                $reasons[] = 'Données houle N/A';
-            } elseif ($windSpeed > SEA_WIND_ORANGE) {
-                $reasons[] = 'Vent fort';
-            } elseif ($swellHeight > SEA_SWELL_ORANGE) {
-                $reasons[] = 'Houle forte';
-            } elseif (isOffshore($windDirection) && $windSpeed > OFFSHORE_WIND_DANGER_THRESHOLD) {
-                $reasons[] = 'Vent de terre';
-            }
-
-            if (!empty($reasons)) {
-                $analysis[$hourKey]['sea'] = ['status' => 'red', 'reasons' => $reasons];
+            if ($windMissing || $swellHeight === null) {
+                $analysis[$hourKey]['sea'] = ['status' => 'grey', 'reasons' => ['Données houle/vent indisponibles']];
             } else {
-                // Conditions VERTES
-                if ($windSpeed <= SEA_WIND_GREEN && $swellHeight <= SEA_SWELL_GREEN) {
-                    $analysis[$hourKey]['sea'] = ['status' => 'green', 'reasons' => []];
+                $reasons = [];
+                // Conditions ROUGES impératives
+                if ($windSpeed > SEA_WIND_ORANGE) {
+                    $reasons[] = 'Vent fort';
+                } elseif ($swellHeight > SEA_SWELL_ORANGE) {
+                    $reasons[] = 'Houle forte';
+                } elseif (isOffshore($windDirection) && $windSpeed > OFFSHORE_WIND_DANGER_THRESHOLD) {
+                    $reasons[] = 'Vent de terre';
+                }
+
+                if (!empty($reasons)) {
+                    $analysis[$hourKey]['sea'] = ['status' => 'red', 'reasons' => $reasons];
                 } else {
-                    // Si ce n'est ni ROUGE ni VERT, c'est ORANGE
-                    if ($windSpeed > SEA_WIND_GREEN) $reasons[] = 'Vent modéré';
-                    if ($swellHeight > SEA_SWELL_GREEN) $reasons[] = 'Houle modérée';
-                    $analysis[$hourKey]['sea'] = ['status' => 'orange', 'reasons' => $reasons];
+                    // Conditions VERTES
+                    if ($windSpeed <= SEA_WIND_GREEN && $swellHeight <= SEA_SWELL_GREEN) {
+                        $analysis[$hourKey]['sea'] = ['status' => 'green', 'reasons' => []];
+                    } else {
+                        // Si ce n'est ni ROUGE ni VERT, c'est ORANGE
+                        if ($windSpeed > SEA_WIND_GREEN) $reasons[] = 'Vent modéré';
+                        if ($swellHeight > SEA_SWELL_GREEN) $reasons[] = 'Houle modérée';
+                        $analysis[$hourKey]['sea'] = ['status' => 'orange', 'reasons' => $reasons];
+                    }
                 }
             }
         }
@@ -110,9 +114,13 @@ function getHourlyAnalysisForSpot(array $weatherData, array $spot): array
         // --- Check for MARSH conditions ---
         if (in_array($spot['zone'], ['MARAIS', 'MIXTE'])) {
             $tide = getTideStatus($time, $dailyData['tide_time_high'] ?? null);
-            
+
+            if ($windMissing) {
+                $analysis[$hourKey]['marsh'] = ['status' => 'grey', 'reasons' => ['Données vent indisponibles']];
+            } elseif ($tide['status'] === 'grey') {
+                $analysis[$hourKey]['marsh'] = ['status' => 'grey', 'reasons' => [$tide['reason']]];
             // Conditions ROUGES
-            if ($windSpeed > MARSH_WIND_ORANGE) {
+            } elseif ($windSpeed > MARSH_WIND_ORANGE) {
                 $analysis[$hourKey]['marsh'] = ['status' => 'red', 'reasons' => ['Vent fort']];
             } elseif ($tide['status'] === 'red') {
                 $analysis[$hourKey]['marsh'] = ['status' => 'red', 'reasons' => [$tide['reason']]];
@@ -130,7 +138,9 @@ function getHourlyAnalysisForSpot(array $weatherData, array $spot): array
 
         // --- Check for LAKE conditions ---
         if ($spot['zone'] === 'LAC') {
-            if ($windSpeed > LAKE_WIND_ORANGE) {
+            if ($windMissing) {
+                $analysis[$hourKey]['lake'] = ['status' => 'grey', 'reasons' => ['Données vent indisponibles']];
+            } elseif ($windSpeed > LAKE_WIND_ORANGE) {
                 $analysis[$hourKey]['lake'] = ['status' => 'red', 'reasons' => ['Vent fort']];
             } elseif ($windSpeed <= LAKE_WIND_GREEN) {
                 $analysis[$hourKey]['lake'] = ['status' => 'green', 'reasons' => []];

@@ -19,9 +19,10 @@ $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, In
     <title>Kayak Météo</title>
     
     <!-- Favicons & Manifest -->
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
     <meta name="theme-color" content="#ffffff">
 
@@ -99,7 +100,11 @@ $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, In
                                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 text-xs mt-1">
                                                                 <?php foreach ($slot['details'][$zone] as $spot): ?>
                                                                     <?php
-                                                                        $color = $spot['status'] === 'green' ? 'text-green-700 font-medium' : 'text-orange-600';
+                                                                        $color = match ($spot['status']) {
+                                                                            'green' => 'text-green-700 font-medium',
+                                                                            'grey' => 'text-slate-400 italic',
+                                                                            default => 'text-orange-600',
+                                                                        };
                                                                         $spotName = trim(preg_replace('/\s?\(.*\)/', '', $spot['name']));
                                                                     ?>
                                                                     <span class="<?= $color ?>"><?= htmlspecialchars($spotName) ?></span>
@@ -170,6 +175,8 @@ $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, In
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <?php elseif ($daily_status['status'] === 'orange'): ?>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        <?php elseif ($daily_status['status'] === 'grey'): ?>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <?php else: ?>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <?php endif; ?>
@@ -204,6 +211,7 @@ $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, In
                     const colorMapping = {
                         green: '#22c55e', // green-500
                         orange: '#f97316', // orange-500
+                        grey: '#94a3b8', // slate-400
                         red: '#ef4444' // red-500
                     };
 

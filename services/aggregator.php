@@ -39,31 +39,47 @@ function getPossibleAnalyses(array $hourAnalysis, string $zone): array
 }
 
 /**
- * Resolves the best status (green > orange > red) among a list of zone analyses.
+ * Ranks a status so the "best" one can be picked among several zone analyses.
+ * 'grey' (donnée manquante) est volontairement mieux classé que 'red' (danger confirmé) :
+ * on ne veut pas afficher un créneau comme dangereux simplement parce qu'une donnée manque.
+ *
+ * @param string $status
+ * @return int
+ */
+function statusRank(string $status): int
+{
+    return match ($status) {
+        'green' => 3,
+        'orange' => 2,
+        'grey' => 1,
+        default => 0, // red
+    };
+}
+
+/**
+ * Resolves the best status (green > orange > grey > red) among a list of zone analyses.
  *
  * @param array $possibleAnalyses List of ['status' => ..., 'reasons' => ...].
  * @return array ['status' => ..., 'reasons' => ...] the best one found.
  */
 function resolveBestStatus(array $possibleAnalyses): array
 {
-    $bestStatus = 'red';
-    $reasons = [];
+    $best = ['status' => 'red', 'reasons' => []];
 
     foreach ($possibleAnalyses as $analysis) {
         if ($analysis['status'] === 'green') {
             return ['status' => 'green', 'reasons' => []];
         }
-        if ($analysis['status'] === 'orange') {
-            $bestStatus = 'orange';
-            $reasons = $analysis['reasons'];
+        if (statusRank($analysis['status']) > statusRank($best['status'])) {
+            $best = $analysis;
         }
     }
 
-    if ($bestStatus === 'red' && !empty($possibleAnalyses)) {
-        $reasons = $possibleAnalyses[0]['reasons'];
+    if ($best['status'] === 'red' && !empty($possibleAnalyses)) {
+        $best['reasons'] = $possibleAnalyses[0]['reasons'];
     }
 
-    return ['status' => $bestStatus, 'reasons' => $reasons];
+    return $best;
 }
 
 /**
@@ -101,13 +117,13 @@ function getAggregatedSlots(array $spots, array $sectors): array
         foreach ($hourlyAnalysis as $hour => $analysis) {
             $aggregatedSlots[$hour]['weather'] = $analysis['weather']; // Store weather details for the hour
 
-            if (in_array($analysis['sea']['status'], ['green', 'orange']) && in_array($spot['zone'], ['MER', 'MIXTE'])) {
+            if (in_array($analysis['sea']['status'], ['green', 'orange', 'grey']) && in_array($spot['zone'], ['MER', 'MIXTE'])) {
                 $aggregatedSlots[$hour]['MER'][] = ['name' => $spot['name'], 'status' => $analysis['sea']['status']];
             }
-            if (in_array($analysis['marsh']['status'], ['green', 'orange']) && in_array($spot['zone'], ['MARAIS', 'MIXTE'])) {
+            if (in_array($analysis['marsh']['status'], ['green', 'orange', 'grey']) && in_array($spot['zone'], ['MARAIS', 'MIXTE'])) {
                 $aggregatedSlots[$hour]['MARAIS'][] = ['name' => $spot['name'], 'status' => $analysis['marsh']['status']];
             }
-            if (in_array($analysis['lake']['status'], ['green', 'orange']) && $spot['zone'] === 'LAC') {
+            if (in_array($analysis['lake']['status'], ['green', 'orange', 'grey']) && $spot['zone'] === 'LAC') {
                 $aggregatedSlots[$hour]['LAC'][] = ['name' => $spot['name'], 'status' => $analysis['lake']['status']];
             }
         }
@@ -200,8 +216,8 @@ function getSpotsForecastSummary(array $spots, array $sectors): array
                     $bestStatusOfDay = 'green';
                     $reasonsForDay = [];
                     break; // Found a green slot, day is green, no need to check further for this day
-                } elseif ($hourResult['status'] === 'orange' && $bestStatusOfDay !== 'green') {
-                    $bestStatusOfDay = 'orange';
+                } elseif (statusRank($hourResult['status']) > statusRank($bestStatusOfDay)) {
+                    $bestStatusOfDay = $hourResult['status'];
                     $reasonsForDay = $hourResult['reasons'];
                 }
             }
