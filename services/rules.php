@@ -43,6 +43,37 @@ function getTideStatus(DateTime $currentTime, ?array $highTideTimes): array
 }
 
 /**
+ * Trouve, parmi une liste de pleines mers, l'heure la plus proche d'un instant donné.
+ *
+ * @param DateTime $time
+ * @param array|null $highTideTimes
+ * @return string|null Heure formatée "H:i", ou null si aucune donnée.
+ */
+function findNearestTideTime(DateTime $time, ?array $highTideTimes): ?string
+{
+    if (empty($highTideTimes)) {
+        return null;
+    }
+
+    $nearest = null;
+    $smallestDiff = null;
+
+    foreach ($highTideTimes as $tideTimestamp) {
+        if ($tideTimestamp === null) continue;
+
+        $tideTime = new DateTime($tideTimestamp);
+        $diff = abs($time->getTimestamp() - $tideTime->getTimestamp());
+
+        if ($smallestDiff === null || $diff < $smallestDiff) {
+            $smallestDiff = $diff;
+            $nearest = $tideTime;
+        }
+    }
+
+    return $nearest?->format('H:i');
+}
+
+/**
  * Construit, pour un jeu de données journalières, un lookup "Y-m-d" => heure ISO de lever/coucher.
  *
  * @param array|null $dailyData
@@ -112,6 +143,18 @@ function getHourlyAnalysisForSpot(array $weatherData, array $spot): array
         $swellHeight = $hourlyData['wave_height'][$i];
         $weatherCode = $hourlyData['weathercode'][$i] ?? null;
 
+        // Sens de la marée : compare le niveau de la mer à l'heure précédente
+        $seaLevel = $hourlyData['sea_level_height_msl'][$i] ?? null;
+        $previousSeaLevel = $hourlyData['sea_level_height_msl'][$i - 1] ?? null;
+        $tideDirection = null;
+        if ($i > 0 && $seaLevel !== null && $previousSeaLevel !== null) {
+            $tideDirection = match (true) {
+                $seaLevel > $previousSeaLevel => 'montante',
+                $seaLevel < $previousSeaLevel => 'descendante',
+                default => 'étale',
+            };
+        }
+
         $hourKey = $time->format('Y-m-d\TH:i');
         $analysis[$hourKey] = [
             'sea' => ['status' => 'red', 'reasons' => ['Zone non applicable']],
@@ -126,6 +169,8 @@ function getHourlyAnalysisForSpot(array $weatherData, array $spot): array
                 'water_temperature' => $hourlyData['sea_surface_temperature'][$i] ?? null,
                 'uv_index' => $hourlyData['uv_index'][$i] ?? null,
                 'weather_code' => $weatherCode,
+                'tide_direction' => $tideDirection,
+                'tide_next_high' => findNearestTideTime($time, $dailyData['tide_time_high'] ?? null),
             ],
         ];
 

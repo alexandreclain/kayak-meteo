@@ -4,29 +4,55 @@
 require_once 'app.php';
 
 $zoneDisplay = [
-    'MER'    => ['label' => 'Mer',    'text' => 'text-blue-600',   'border' => 'border-blue-200'],
-    'MARAIS' => ['label' => 'Marais', 'text' => 'text-green-600',  'border' => 'border-green-200'],
-    'LAC'    => ['label' => 'Lac',    'text' => 'text-purple-600', 'border' => 'border-purple-200'],
+    'MER'    => ['label' => 'Mer',    'text' => 'text-ocean-brand', 'border' => 'border-sky-200'],
+    'MARAIS' => ['label' => 'Marais', 'text' => 'text-teal-600',    'border' => 'border-teal-200'],
+    'LAC'    => ['label' => 'Lac',    'text' => 'text-violet-600',  'border' => 'border-violet-200'],
 ];
 
 $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE, null, null, 'EEE');
 $indicativeCutoff = (new DateTime())->modify('+' . RELIABLE_FORECAST_DAYS . ' days');
 $isFirstDayAccordion = true;
+
+$siteUrl = 'https://kayak.weclain.com/';
+$pageTitle = 'Kayak Météo — by weclain.com';
+$pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : vent, houle et marée analysés en temps réel pour la mer, le marais et le lac de Tanchet.";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kayak Météo</title>
+    <title><?= htmlspecialchars($pageTitle) ?></title>
+    <meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="<?= $siteUrl ?>">
 
-    <!-- Favicons & Manifest -->
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:title" content="<?= htmlspecialchars($pageTitle) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($pageDescription) ?>">
+    <meta property="og:url" content="<?= $siteUrl ?>">
+    <meta property="og:image" content="<?= $siteUrl ?>android-chrome-512x512.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<?= htmlspecialchars($pageTitle) ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($pageDescription) ?>">
+
+    <!-- Favicons & Manifest (PWA) -->
     <link rel="icon" href="favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#0369A1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Kayak Météo">
+
+    <!-- Polices -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
     <!-- Le script de Tailwind CSS (via CDN) est indispensable. Il analyse votre HTML et génère les styles à la volée. -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -42,38 +68,63 @@ $isFirstDayAccordion = true;
         /* Hauteur pour la carte Leaflet */
         #map { height: 400px; }
     </style>
+
+    <!-- Données structurées (SEO) -->
+    <script type="application/ld+json">
+    <?= json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'WebApplication',
+        'name' => 'Kayak Météo',
+        'url' => $siteUrl,
+        'description' => $pageDescription,
+        'applicationCategory' => 'WeatherApplication',
+        'operatingSystem' => 'Any',
+        'publisher' => ['@type' => 'Organization', 'name' => 'weclain', 'url' => 'https://weclain.com'],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+    </script>
 </head>
-<body class="bg-white text-kayak-blue">
+<body class="bg-slate-50 text-slate-900">
 
     <div class="container mx-auto p-4 md:p-6 max-w-4xl">
 
         <header class="mb-8 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-kayak-blue">Kayak Météo</h1>
-            <p class="text-slate-500">Les meilleurs créneaux pour vos sorties aux Sables d'Olonne</p>
+            <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-slate-900">
+                Kayak Météo <span class="text-xs font-normal text-slate-400 align-middle">by weclain.com</span>
+            </h1>
+            <p class="text-slate-500 mt-1">Les meilleurs créneaux pour vos sorties aux Sables d'Olonne</p>
         </header>
 
         <main>
             <section class="mb-12">
-                <h2 class="text-2xl font-bold mb-4">Carte des conditions actuelles</h2>
-                <div id="map" class="w-full rounded-lg shadow-md z-0"></div>
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Carte des conditions actuelles</h2>
+                <div id="map" class="w-full rounded-lg border border-slate-200 shadow-sm z-0"></div>
             </section>
 
             <section class="mb-12">
-                <h2 class="text-2xl font-bold mb-4">Synthèse des 7 prochains jours</h2>
-                <div class="overflow-x-auto bg-white rounded-lg shadow-md">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Synthèse des 7 prochains jours</h2>
+                <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg shadow-sm">
                     <table class="min-w-full text-sm text-left">
-                        <thead class="bg-kayak-light-blue/60">
+                        <thead class="bg-ocean-100">
                             <tr>
-                                <th class="p-3 font-bold">Spot</th>
+                                <th class="p-3 font-bold text-slate-900">Spot</th>
                                 <?php for ($d = 0; $d < 7; $d++): ?>
                                     <?php
                                         $headerDay = (new DateTime())->modify("+$d days");
                                         $headerIndicative = $headerDay > $indicativeCutoff;
+                                        $headerWeather = $dayWeatherSummary[$headerDay->format('Y-m-d')] ?? null;
+                                        $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
                                     ?>
-                                    <th class="p-3 text-center font-bold <?= $headerIndicative ? 'opacity-60' : '' ?>">
+                                    <th class="p-3 text-center font-bold text-slate-900 <?= $headerIndicative ? 'opacity-60' : '' ?>">
                                         <?= $dayHeaderFormatter->format($headerDay) ?>
                                         <br>
-                                        <span class="font-normal text-xs"><?= $headerDay->format('d/m') ?></span>
+                                        <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
+                                        <?php if ($headerWeather): ?>
+                                            <div class="mt-1 text-[10px] font-normal text-slate-500 leading-tight space-y-0.5">
+                                                <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
+                                                <?php if ($headerWeather['wind_speed'] !== null): ?><div>💨 <?= round($headerWeather['wind_speed']) ?> km/h</div><?php endif; ?>
+                                                <?php if ($headerWeather['uv_index'] !== null): ?><div>☀️ UV <?= round($headerWeather['uv_index'], 1) ?></div><?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </th>
                                 <?php endfor; ?>
                             </tr>
@@ -81,7 +132,7 @@ $isFirstDayAccordion = true;
                         <tbody>
                             <?php foreach ($spotsForecast as $forecast): ?>
                             <tr class="border-b border-slate-200 last:border-0">
-                                <td class="p-3 font-medium"><?= htmlspecialchars($forecast['spot']['name']) ?></td>
+                                <td class="p-3 font-medium text-slate-800"><?= htmlspecialchars($forecast['spot']['name']) ?></td>
                                 <?php foreach ($forecast['daily_status'] as $d => $daily_status): ?>
                                     <?php
                                         $cellDay = (new DateTime())->modify("+$d days");
@@ -91,13 +142,13 @@ $isFirstDayAccordion = true;
                                     <td class="p-3 text-center <?= $cellIndicative ? 'opacity-60' : '' ?>">
                                         <button type="button" class="info-trigger" data-title="<?= $cellTitle ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
                                             <?php if ($daily_status['status'] === 'green'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-safe" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <?php elseif ($daily_status['status'] === 'orange'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                             <?php elseif ($daily_status['status'] === 'grey'): ?>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <?php else: ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <?php endif; ?>
                                         </button>
                                     </td>
@@ -111,13 +162,13 @@ $isFirstDayAccordion = true;
             </section>
 
             <section>
-                <h2 class="text-2xl font-bold mb-4">Créneaux favorables</h2>
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Créneaux favorables</h2>
                 <div class="space-y-3">
                     <?php if (empty($slotsByDay)): ?>
-                        <div class="bg-kayak-light-blue border border-sky-200 rounded-lg p-5 shadow-md text-center text-slate-600">
+                        <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm text-center text-slate-600">
                             <p>Aucun créneau favorable trouvé pour les 7 prochains jours.</p>
                             <?php if (!empty($apiErrors)): ?>
-                                <div class="text-left text-xs text-red-600 mt-4 bg-red-50 p-3 rounded">
+                                <div class="text-left text-xs text-status-danger mt-4 bg-red-50 border border-red-200 p-3 rounded">
                                     <p class="font-bold mb-1">Détails des erreurs API :</p>
                                     <ul class="list-disc list-inside">
                                         <?php foreach ($apiErrors as $error): ?>
@@ -134,12 +185,12 @@ $isFirstDayAccordion = true;
                                 $dayScore = $dayScores[$day]['score'] ?? null;
                                 $isDayIndicative = $dayDate > $indicativeCutoff;
                             ?>
-                            <details class="group bg-white rounded-lg shadow-sm" <?= $isFirstDayAccordion ? 'open' : '' ?>>
+                            <details class="group bg-white border border-slate-200 rounded-lg shadow-sm" <?= $isFirstDayAccordion ? 'open' : '' ?>>
                                 <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <span class="font-bold text-lg truncate"><?= ucfirst($dateFormatter->format($dayDate)) ?></span>
+                                        <span class="font-heading font-bold text-lg text-slate-900 truncate"><?= ucfirst($dateFormatter->format($dayDate)) ?></span>
                                         <?php if ($isDayIndicative): ?>
-                                            <span class="text-xs font-semibold bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full shrink-0">Indicatif</span>
+                                            <span class="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-full shrink-0">Indicatif</span>
                                         <?php endif; ?>
                                     </div>
                                     <div class="flex items-center gap-3 shrink-0">
@@ -151,8 +202,8 @@ $isFirstDayAccordion = true;
                                 </summary>
                                 <div class="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
                                     <?php foreach ($daySlots as $slot): ?>
-                                        <div class="p-4 bg-slate-50 rounded-lg">
-                                            <p class="font-bold text-base text-kayak-blue">
+                                        <div class="p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                                            <p class="font-heading font-bold text-base text-slate-900">
                                                 <?= $slot['start']->format('H:i') ?> - <?= $slot['end']->format('H:i') ?>
                                             </p>
 
@@ -166,9 +217,9 @@ $isFirstDayAccordion = true;
                                                                 <?php foreach ($slot['details'][$zone] as $spot): ?>
                                                                     <?php
                                                                         $color = match ($spot['status']) {
-                                                                            'green' => 'text-green-700 font-medium',
+                                                                            'green' => 'text-status-safe font-medium',
                                                                             'grey' => 'text-slate-400 italic',
-                                                                            default => 'text-orange-600',
+                                                                            default => 'text-status-warning',
                                                                         };
                                                                         $spotName = trim(preg_replace('/\s?\(.*\)/', '', $spot['name']));
                                                                     ?>
@@ -184,6 +235,7 @@ $isFirstDayAccordion = true;
                                             <?php if (isset($slot['weather'])):
                                                 $weather = $slot['weather'];
                                                 $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
+                                                $showTide = !empty($slot['details']['MARAIS']) && ($weather['tide_direction'] ?? null) !== null;
                                             ?>
                                                 <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600">
                                                     <div class="flex items-center gap-1.5" title="Conditions générales">
@@ -224,6 +276,15 @@ $isFirstDayAccordion = true;
                                                         <span>UV <?= round($weather['uv_index'], 1) ?></span>
                                                     </div>
                                                     <?php endif; ?>
+                                                    <?php if ($showTide): ?>
+                                                    <div class="col-span-2 sm:col-span-3 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
+                                                        <span><?= $weather['tide_direction'] === 'montante' ? '⬆️' : ($weather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
+                                                        <span>
+                                                            Marée <?= $weather['tide_direction'] ?>
+                                                            <?php if ($weather['tide_next_high']): ?><span class="text-slate-400">· pleine mer <?= $weather['tide_next_high'] ?></span><?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -238,8 +299,9 @@ $isFirstDayAccordion = true;
 
         </main>
 
-        <footer class="text-center mt-12 text-xs text-slate-400">
+        <footer class="text-center mt-12 text-xs text-slate-400 space-y-1">
             <p>Données météo fournies par <a href="https://open-meteo.com/" target="_blank" class="underline">Open-Meteo</a>.</p>
+            <p>Réalisé par <a href="https://weclain.com" target="_blank" class="underline">weclain</a> avec ❤</p>
         </footer>
 
         <!-- Panneau d'info (clic/tap sur une icône de statut) -->
@@ -247,7 +309,7 @@ $isFirstDayAccordion = true;
         <div id="info-sheet" class="fixed inset-x-0 bottom-0 z-50 translate-y-full transition-transform duration-300 ease-out">
             <div class="bg-white rounded-t-2xl shadow-2xl max-h-[70vh] overflow-y-auto border-t border-slate-200 mx-auto max-w-4xl">
                 <div class="flex items-center justify-between p-4 border-b border-slate-100 sticky top-0 bg-white">
-                    <h3 id="info-sheet-title" class="font-bold text-base"></h3>
+                    <h3 id="info-sheet-title" class="font-heading font-bold text-base text-slate-900"></h3>
                     <button type="button" id="info-sheet-close" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Fermer">
                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -271,10 +333,10 @@ $isFirstDayAccordion = true;
                     }).addTo(map);
 
                     const colorMapping = {
-                        green: '#22c55e', // green-500
-                        orange: '#f97316', // orange-500
+                        green: '#059669', // status-safe
+                        orange: '#D97706', // status-warning
                         grey: '#94a3b8', // slate-400
-                        red: '#ef4444' // red-500
+                        red: '#DC2626' // status-danger
                     };
 
                     mapData.forEach(data => {

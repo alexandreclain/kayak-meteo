@@ -21,7 +21,10 @@ $spotsForecast = getSpotsForecastSummary($spotAnalyses);
 // 4. Get the 0-10 navigability score per day (for the accordion header)
 $dayScores = getDayScores($spotAnalyses);
 
-// 5. Group slots by day for display
+// 5. Get a representative weather snapshot per day (for the summary table header)
+$dayWeatherSummary = getDayWeatherSummary($spotAnalyses);
+
+// 6. Group slots by day for display
 $slotsByDay = [];
 foreach ($finalSlots as $slot) {
     $day = $slot['start']->format('Y-m-d');
@@ -31,7 +34,7 @@ foreach ($finalSlots as $slot) {
     $slotsByDay[$day][] = $slot;
 }
 
-// 6. Prepare formatter for the view
+// 7. Prepare formatter for the view
 $dateFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE, null, null, 'EEEE d MMMM');
 
 // All variables are now ready for index.php

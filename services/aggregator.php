@@ -321,3 +321,34 @@ function getDayScores(array $spotAnalyses): array
 
     return $dayScores;
 }
+
+/**
+ * Builds a representative weather snapshot (midi) per day, for the 7-day summary header.
+ * Les spots étant géographiquement proches, la météo du premier spot disponible à midi
+ * suffit comme aperçu journalier — pas besoin d'une moyenne sur tous les spots.
+ *
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @return array [$dayKey ('Y-m-d') => weather array|null]
+ */
+function getDayWeatherSummary(array $spotAnalyses): array
+{
+    $summary = [];
+
+    for ($d = 0; $d < 7; $d++) {
+        $day = (new DateTime())->modify("+$d days");
+        $dayKey = $day->format('Y-m-d');
+        $noonKey = $day->format('Y-m-d\T') . '12:00';
+        $weather = null;
+
+        foreach ($spotAnalyses as $entry) {
+            if (isset($entry['analysis'][$noonKey]['weather'])) {
+                $weather = $entry['analysis'][$noonKey]['weather'];
+                break;
+            }
+        }
+
+        $summary[$dayKey] = $weather;
+    }
+
+    return $summary;
+}

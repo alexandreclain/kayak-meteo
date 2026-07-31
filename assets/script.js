@@ -2,12 +2,33 @@ tailwind.config = {
     theme: {
         extend: {
             colors: {
-                'kayak-blue': '#1e293b', // bg-slate-900
-                'kayak-orange': '#f97316', // bg-orange-500
-                'kayak-light-blue': '#f0f9ff', // bg-sky-50
-            }
-        }
-    }
+                ocean: {
+                    50: '#F8FAFC',
+                    100: '#F1F5F9',
+                    brand: '#0369A1',
+                    action: '#0891B2',
+                },
+                status: {
+                    safe: '#059669',
+                    warning: '#D97706',
+                    danger: '#DC2626',
+                },
+            },
+            fontFamily: {
+                heading: ['Outfit', 'sans-serif'],
+                body: ['Plus Jakarta Sans', 'sans-serif'],
+            },
+        },
+    },
+};
+
+// PWA : enregistre le service worker pour rendre l'app installable
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function (error) {
+            console.warn('Service worker non enregistré :', error);
+        });
+    });
 }
 
 // Panneau d'info : ouvre au clic/tap sur une icône de statut, avec le détail des raisons.

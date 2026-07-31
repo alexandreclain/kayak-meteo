@@ -37,10 +37,10 @@ function describeReason(string $reason): string
  */
 function dayScoreBadgeClasses(?int $score): string
 {
-    if ($score === null) return 'bg-slate-200 text-slate-500';
-    if ($score >= 7) return 'bg-green-100 text-green-700';
-    if ($score >= 4) return 'bg-orange-100 text-orange-700';
-    return 'bg-red-100 text-red-700';
+    if ($score === null) return 'bg-slate-100 text-slate-500 border border-slate-200';
+    if ($score >= 7) return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    if ($score >= 4) return 'bg-amber-50 text-amber-700 border border-amber-200';
+    return 'bg-red-50 text-red-700 border border-red-200';
 }
 
 /**

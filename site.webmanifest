@@ -1,6 +1,9 @@
 {
-    "name": "Kayak Météo",
+    "name": "Kayak Météo — by weclain.com",
     "short_name": "Kayak Météo",
+    "description": "Créneaux favorables pour le kayak aux Sables d'Olonne, selon le vent, la houle et les marées.",
+    "start_url": "/",
+    "scope": "/",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -13,7 +16,7 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "theme_color": "#0369A1",
+    "background_color": "#F8FAFC",
     "display": "standalone"
 }

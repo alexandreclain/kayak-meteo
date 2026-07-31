@@ -215,13 +215,16 @@ function getWeatherData(float $lat, float $lng): array
     }
 
     $weatherData['hourly']['wave_height'] = array_fill(0, count($weatherData['hourly']['time']), null);
+    $weatherData['hourly']['sea_level_height_msl'] = array_fill(0, count($weatherData['hourly']['time']), null);
 
     // --- 2. Houle + marée : API Marine d'Open-Meteo (gratuite, même fournisseur) ---
     // Le "tide_time_high" est déduit des maxima locaux du niveau de la mer, car
-    // Open-Meteo n'expose pas directement les heures de pleine mer.
+    // Open-Meteo n'expose pas directement les heures de pleine mer. Le niveau horaire
+    // est aussi conservé pour déduire le sens de la marée (montante/descendante).
     $marineData = _fetchMarineData($lat, $lng);
     if (!empty($marineData['hourly']['time'])) {
         $weatherData = _mergeByTime($weatherData, $marineData, 'wave_height');
+        $weatherData = _mergeByTime($weatherData, $marineData, 'sea_level_height_msl');
         $weatherData['daily']['tide_time_high'] = _extractHighTideTimes(
             $marineData['hourly']['time'],
             $marineData['hourly']['sea_level_height_msl'] ?? []
