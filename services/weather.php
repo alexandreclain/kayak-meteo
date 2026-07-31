@@ -184,9 +184,9 @@ function getWeatherData(float $lat, float $lng): array
         }
     }
 
-    // Construction de l'URL de l'API Open-Meteo (vent, température de l'eau)
+    // Construction de l'URL de l'API Open-Meteo (vent, rafales, météo, températures, UV, soleil)
     $forecastApiUrl = sprintf(
-        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=wind_speed_10m,wind_direction_10m,sea_surface_temperature&timezone=auto&wind_speed_unit=kmh&forecast_days=7",
+        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weathercode,uv_index,sea_surface_temperature&daily=sunrise,sunset&timezone=auto&wind_speed_unit=kmh&forecast_days=7",
         $lat,
         $lng
     );

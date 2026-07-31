@@ -155,8 +155,20 @@ define('TIDE_WINDOW_GREEN_SECONDS', 90 * 60); // 1h30
 define('TIDE_WINDOW_ORANGE_SECONDS', 150 * 60); // 2h30
 
 // -- Règles LAC --
-define('LAKE_WIND_GREEN', 20);
 define('LAKE_WIND_ORANGE', 30);
+define('LAKE_WIND_GREEN', 20);
+
+// -- Rafales --
+// Marge au-delà du seuil orange d'une zone à partir de laquelle une rafale devient dangereuse
+define('GUST_DANGER_MARGIN', 10);
+
+// -- Orage --
+// Codes météo OMM (weathercode Open-Meteo) correspondant à un orage
+define('STORM_WEATHER_CODES', [95, 96, 99]);
+
+// -- Fiabilité des prévisions --
+// Au-delà de ce nombre de jours, les prévisions sont affichées comme indicatives
+define('RELIABLE_FORECAST_DAYS', 3);
 
 // --- CLÉS API (définies dans .env, voir .env.example) ---
 define('STORMGLASS_API_KEY', getenv('STORMGLASS_API_KEY') ?: '');

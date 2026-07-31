@@ -17,6 +17,49 @@ function getSectorWeatherData(array $sectors): array
 }
 
 /**
+ * Builds the list of human-readable API error messages, one per sector that failed.
+ *
+ * @param array $sectors The sectors from config.
+ * @param array $sectorWeatherData Result of getSectorWeatherData().
+ * @return array List of error strings.
+ */
+function getSectorApiErrors(array $sectors, array $sectorWeatherData): array
+{
+    $apiErrors = [];
+    foreach ($sectors as $sectorId => $sector) {
+        $weatherData = $sectorWeatherData[$sectorId] ?? null;
+        if ($weatherData !== null && isset($weatherData['error']) && $weatherData['error'] === true) {
+            $apiErrors[] = "Erreur API pour le secteur " . htmlspecialchars($sector['name']) . ": " . htmlspecialchars($weatherData['reason']);
+        }
+    }
+    return $apiErrors;
+}
+
+/**
+ * Computes the hourly analysis for every spot once, so downstream consumers
+ * (slots, 7-day summary, day scores) don't each re-fetch/re-analyze the same data.
+ *
+ * @param array $spots The list of spots from config.
+ * @param array $sectorWeatherData Result of getSectorWeatherData().
+ * @return array [$spotId => ['spot' => ..., 'analysis' => getHourlyAnalysisForSpot() result]]
+ */
+function computeSpotAnalyses(array $spots, array $sectorWeatherData): array
+{
+    $spotAnalyses = [];
+    foreach ($spots as $spot) {
+        $weatherData = $sectorWeatherData[$spot['sector']] ?? null;
+        if ($weatherData === null || isset($weatherData['error']) || empty($weatherData['hourly']['time'])) {
+            continue;
+        }
+        $spotAnalyses[$spot['id']] = [
+            'spot' => $spot,
+            'analysis' => getHourlyAnalysisForSpot($weatherData, $spot),
+        ];
+    }
+    return $spotAnalyses;
+}
+
+/**
  * Builds the list of relevant zone analyses (sea/marsh/lake) for a spot, based on its zone.
  *
  * @param array $hourAnalysis Analysis for one hour, as returned by getHourlyAnalysisForSpot().
@@ -83,38 +126,21 @@ function resolveBestStatus(array $possibleAnalyses): array
 }
 
 /**
- * Fetches weather for all spots, analyzes conditions, and aggregates valid slots.
+ * Analyzes conditions for every spot and aggregates them into contiguous favorable slots.
  *
- * @param array $spots The list of spots from config.
- * @return array An array containing final slots and any API errors.
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @return array The final list of slots, sorted chronologically.
  */
-function getAggregatedSlots(array $spots, array $sectors): array
+function getAggregatedSlots(array $spotAnalyses): array
 {
     $aggregatedSlots = [];
-    $apiErrors = [];
     $now = new DateTime();
-    $threeDaysLater = (new DateTime())->modify('+3 days');
+    $indicativeCutoff = (new DateTime())->modify('+' . RELIABLE_FORECAST_DAYS . ' days');
 
-    $sectorWeatherData = getSectorWeatherData($sectors);
-    foreach ($sectors as $sectorId => $sector) {
-        $weatherData = $sectorWeatherData[$sectorId];
-        if (isset($weatherData['error']) && $weatherData['error'] === true) {
-            $apiErrors[] = "Erreur API pour le secteur " . htmlspecialchars($sector['name']) . ": " . htmlspecialchars($weatherData['reason']);
-        }
-    }
-
-    // 1. Analyze each spot using the data from its sector
-    foreach ($spots as $spot) {
-        $weatherData = $sectorWeatherData[$spot['sector']] ?? null;
-        if ($weatherData === null || isset($weatherData['error'])) {
-            continue; // Skip spot if its sector data failed
-        }
-
-        if (empty($weatherData['hourly']['time'])) continue;
-
-        $hourlyAnalysis = getHourlyAnalysisForSpot($weatherData, $spot);
-
-        foreach ($hourlyAnalysis as $hour => $analysis) {
+    // 1. Merge every spot's hourly analysis into per-hour zone buckets
+    foreach ($spotAnalyses as $entry) {
+        $spot = $entry['spot'];
+        foreach ($entry['analysis'] as $hour => $analysis) {
             $aggregatedSlots[$hour]['weather'] = $analysis['weather']; // Store weather details for the hour
 
             if (in_array($analysis['sea']['status'], ['green', 'orange', 'grey']) && in_array($spot['zone'], ['MER', 'MIXTE'])) {
@@ -137,6 +163,17 @@ function getAggregatedSlots(array $spots, array $sectors): array
 
     foreach ($sortedHours as $hour) {
         $slotInfo = $aggregatedSlots[$hour];
+        $hasAnyZone = isset($slotInfo['MER']) || isset($slotInfo['MARAIS']) || isset($slotInfo['LAC']);
+
+        // Heure sans aucune option nulle part (nuit, orage général...) : on referme le créneau
+        // en cours sans créer de bloc vide, et sans fusionner à tort à travers ce trou.
+        if (!$hasAnyZone) {
+            if ($currentSlot !== null) {
+                $finalSlots[] = $currentSlot;
+                $currentSlot = null;
+            }
+            continue;
+        }
 
         // La signature pour fusionner les créneaux ne doit pas inclure la météo détaillée de l'heure
         $signatureInfo = $slotInfo;
@@ -164,7 +201,7 @@ function getAggregatedSlots(array $spots, array $sectors): array
                 'end' => (clone $time)->modify('+1 hour'),
                 'details' => $slotInfo,
                 'signature' => $slotSignature,
-                'indicative' => $time > $threeDaysLater,
+                'indicative' => $time > $indicativeCutoff,
                 'weather' => $aggregatedSlots[$hour]['weather'] ?? null,
             ];
         } else {
@@ -173,31 +210,24 @@ function getAggregatedSlots(array $spots, array $sectors): array
     }
     if ($currentSlot !== null) $finalSlots[] = $currentSlot;
 
-    return [
-        'slots' => $finalSlots,
-        'errors' => $apiErrors,
-    ];
+    return $finalSlots;
 }
 
 /**
  * Creates a 7-day forecast summary for all spots, including current status for a map.
  *
- * @param array $spots The list of spots from config.
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
  * @return array A summary of forecasts for all spots.
  */
-function getSpotsForecastSummary(array $spots, array $sectors): array
+function getSpotsForecastSummary(array $spotAnalyses): array
 {
     $spotsForecast = [];
     $now = new DateTime();
     $currentHourKey = $now->format('Y-m-d\TH:00');
 
-    $sectorWeatherData = getSectorWeatherData($sectors);
-
-    foreach ($spots as $spot) {
-        $weatherData = $sectorWeatherData[$spot['sector']] ?? null;
-        if ($weatherData === null || isset($weatherData['error'])) continue;
-
-        $analysis = getHourlyAnalysisForSpot($weatherData, $spot);
+    foreach ($spotAnalyses as $entry) {
+        $spot = $entry['spot'];
+        $analysis = $entry['analysis'];
         $daily_statuses = [];
 
         for ($d = 0; $d < 7; $d++) {
@@ -205,7 +235,9 @@ function getSpotsForecastSummary(array $spots, array $sectors): array
             $bestStatusOfDay = 'red';
             $reasonsForDay = [];
 
-            for ($h = 8; $h <= 20; $h++) { // Check daylight hours
+            // 0-23h : la nuit est déjà marquée rouge par getHourlyAnalysisForSpot() via le
+            // lever/coucher réel du soleil, plus fiable qu'une fenêtre fixe.
+            for ($h = 0; $h < 24; $h++) {
                 $hourKey = $day->format("Y-m-d\T") . sprintf('%02d:00', $h);
                 if (!isset($analysis[$hourKey])) continue;
 
@@ -237,4 +269,55 @@ function getSpotsForecastSummary(array $spots, array $sectors): array
         $spotsForecast[$spot['id']] = ['spot' => $spot, 'daily_status' => $daily_statuses, 'current_status' => ['status' => $currentStatus, 'reasons' => $currentReasons]];
     }
     return $spotsForecast;
+}
+
+/**
+ * Computes a 0-10 navigability score per day, based on the best status available across
+ * ALL spots combined for each hour (i.e. "is there at least one good place to go").
+ * Green hours count fully, orange hours partially, red hours count as zero; hours with
+ * missing data are simply excluded from the average rather than penalizing the score.
+ *
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
+ */
+function getDayScores(array $spotAnalyses): array
+{
+    $hourlyPossible = [];
+    foreach ($spotAnalyses as $entry) {
+        $spot = $entry['spot'];
+        foreach ($entry['analysis'] as $hourKey => $hourAnalysis) {
+            $hourlyPossible[$hourKey] = array_merge(
+                $hourlyPossible[$hourKey] ?? [],
+                getPossibleAnalyses($hourAnalysis, $spot['zone'])
+            );
+        }
+    }
+
+    $scoreWeights = ['green' => 1.0, 'orange' => 0.6, 'red' => 0.0];
+
+    $dayScores = [];
+    for ($d = 0; $d < 7; $d++) {
+        $day = (new DateTime())->modify("+$d days");
+        $dayKey = $day->format('Y-m-d');
+        $creditSum = 0.0;
+        $countedHours = 0;
+
+        for ($h = 0; $h < 24; $h++) {
+            $hourKey = $day->format('Y-m-d\T') . sprintf('%02d:00', $h);
+            if (!isset($hourlyPossible[$hourKey])) continue;
+
+            $best = resolveBestStatus($hourlyPossible[$hourKey]);
+            if ($best['status'] === 'grey') continue;
+
+            $countedHours++;
+            $creditSum += $scoreWeights[$best['status']];
+        }
+
+        $dayScores[$dayKey] = [
+            'score' => $countedHours > 0 ? (int) round(($creditSum / $countedHours) * 10) : null,
+            'counted_hours' => $countedHours,
+        ];
+    }
+
+    return $dayScores;
 }
