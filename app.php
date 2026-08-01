@@ -21,8 +21,8 @@ $spotsForecast = getSpotsForecastSummary($spotAnalyses);
 // 4. Get the 0-10 navigability score per day (for the accordion header)
 $dayScores = getDayScores($spotAnalyses);
 
-// 5. Get a representative weather snapshot per day (for the summary table header)
-$dayWeatherSummary = getDayWeatherSummary($spotAnalyses);
+// 5. Get the ideal departure hour per day, with its weather snapshot (for the summary table header)
+$idealDepartureHours = getIdealDepartureHours($spotAnalyses);
 
 // 6. Get the current-hour weather/tide snapshot (for the presentation block)
 $currentWeather = getCurrentWeatherSnapshot($spotAnalyses);

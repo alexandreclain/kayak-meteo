@@ -287,15 +287,13 @@ function getSpotsForecastSummary(array $spotAnalyses): array
 }
 
 /**
- * Computes a 0-10 navigability score per day, based on the best status available across
- * ALL spots combined for each hour (i.e. "is there at least one good place to go").
- * Green hours count fully, orange hours partially, red hours count as zero; hours with
- * missing data are simply excluded from the average rather than penalizing the score.
+ * Merges every spot's hourly analysis into a single "best status anywhere" per hour,
+ * shared by getDayScores() and getIdealDepartureHours() so both work off the same data.
  *
  * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
+ * @return array [$hourKey => ['status' => ..., 'reasons' => ...]]
  */
-function getDayScores(array $spotAnalyses): array
+function buildHourlyGlobalStatus(array $spotAnalyses): array
 {
     $hourlyPossible = [];
     foreach ($spotAnalyses as $entry) {
@@ -308,6 +306,25 @@ function getDayScores(array $spotAnalyses): array
         }
     }
 
+    $hourlyStatus = [];
+    foreach ($hourlyPossible as $hourKey => $possibleAnalyses) {
+        $hourlyStatus[$hourKey] = resolveBestStatus($possibleAnalyses);
+    }
+    return $hourlyStatus;
+}
+
+/**
+ * Computes a 0-10 navigability score per day, based on the best status available across
+ * ALL spots combined for each hour (i.e. "is there at least one good place to go").
+ * Green hours count fully, orange hours partially, red hours count as zero; hours with
+ * missing data are simply excluded from the average rather than penalizing the score.
+ *
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
+ */
+function getDayScores(array $spotAnalyses): array
+{
+    $hourlyStatus = buildHourlyGlobalStatus($spotAnalyses);
     $scoreWeights = ['green' => 1.0, 'orange' => 0.6, 'red' => 0.0];
 
     $dayScores = [];
@@ -319,9 +336,9 @@ function getDayScores(array $spotAnalyses): array
 
         for ($h = 0; $h < 24; $h++) {
             $hourKey = $day->format('Y-m-d\T') . sprintf('%02d:00', $h);
-            if (!isset($hourlyPossible[$hourKey])) continue;
+            if (!isset($hourlyStatus[$hourKey])) continue;
 
-            $best = resolveBestStatus($hourlyPossible[$hourKey]);
+            $best = $hourlyStatus[$hourKey];
             if ($best['status'] === 'grey') continue;
 
             $countedHours++;
@@ -338,34 +355,61 @@ function getDayScores(array $spotAnalyses): array
 }
 
 /**
- * Builds a representative weather snapshot (midi) per day, for the 7-day summary header.
- * Les spots étant géographiquement proches, la météo du premier spot disponible à midi
- * suffit comme aperçu journalier — pas besoin d'une moyenne sur tous les spots.
+ * For each of the next 7 days, finds the best hour to head out (first green hour of the
+ * day, or the best available status if there's no green), and returns that hour along
+ * with a weather snapshot taken at that exact hour — so the 7-day summary shows the
+ * conditions that actually matter (the ideal window) instead of an arbitrary fixed time.
  *
  * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array [$dayKey ('Y-m-d') => weather array|null]
+ * @return array [$dayKey ('Y-m-d') => ['hour' => 'H:i'|null, 'status' => string, 'weather' => array|null]]
  */
-function getDayWeatherSummary(array $spotAnalyses): array
+function getIdealDepartureHours(array $spotAnalyses): array
 {
-    $summary = [];
+    $hourlyStatus = buildHourlyGlobalStatus($spotAnalyses);
+    $ideal = [];
 
     for ($d = 0; $d < 7; $d++) {
         $day = (new DateTime())->modify("+$d days");
         $dayKey = $day->format('Y-m-d');
-        $noonKey = $day->format('Y-m-d\T') . '12:00';
-        $weather = null;
+        $bestHourKey = null;
+        $bestStatus = 'red';
 
-        foreach ($spotAnalyses as $entry) {
-            if (isset($entry['analysis'][$noonKey]['weather'])) {
-                $weather = $entry['analysis'][$noonKey]['weather'];
-                break;
+        for ($h = 0; $h < 24; $h++) {
+            $hourKey = $day->format('Y-m-d\T') . sprintf('%02d:00', $h);
+            if (!isset($hourlyStatus[$hourKey])) continue;
+
+            $status = $hourlyStatus[$hourKey]['status'];
+
+            if ($status === 'green') {
+                $bestHourKey = $hourKey;
+                $bestStatus = 'green';
+                break; // premier créneau vert de la journée = heure de départ idéale
+            }
+
+            if ($bestHourKey === null || statusRank($status) > statusRank($bestStatus)) {
+                $bestHourKey = $hourKey;
+                $bestStatus = $status;
             }
         }
 
-        $summary[$dayKey] = $weather;
+        $weather = null;
+        if ($bestHourKey !== null) {
+            foreach ($spotAnalyses as $entry) {
+                if (isset($entry['analysis'][$bestHourKey]['weather'])) {
+                    $weather = $entry['analysis'][$bestHourKey]['weather'];
+                    break;
+                }
+            }
+        }
+
+        $ideal[$dayKey] = [
+            'hour' => $bestHourKey ? (new DateTime($bestHourKey))->format('H:i') : null,
+            'status' => $bestStatus,
+            'weather' => $weather,
+        ];
     }
 
-    return $summary;
+    return $ideal;
 }
 
 /**

@@ -137,6 +137,24 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                     </div>
                                 </div>
                                 <?php endif; ?>
+                                <?php if ($currentWeather['water_temperature'] !== null): ?>
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <span class="text-lg">🌊</span>
+                                    <div>
+                                        <div class="font-bold text-slate-900"><?= round($currentWeather['water_temperature']) ?>°C</div>
+                                        <div class="text-xs text-slate-500">Eau</div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($currentWeather['swell_height'] !== null): ?>
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2l2-9 2 18 2-9 2 12 2-15 2 10h2"/></svg>
+                                    <div>
+                                        <div class="font-bold text-slate-900"><?= $currentWeather['swell_height'] ?> m</div>
+                                        <div class="text-xs text-slate-500">Houle</div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                                 <?php if (($currentWeather['tide_direction'] ?? null) !== null): ?>
                                 <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
                                     <span class="text-lg"><?= $currentWeather['tide_direction'] === 'montante' ? '⬆️' : ($currentWeather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
@@ -166,13 +184,17 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                     <?php
                                         $headerDay = (new DateTime())->modify("+$d days");
                                         $headerIndicative = $headerDay > $indicativeCutoff;
-                                        $headerWeather = $dayWeatherSummary[$headerDay->format('Y-m-d')] ?? null;
+                                        $headerIdeal = $idealDepartureHours[$headerDay->format('Y-m-d')] ?? null;
+                                        $headerWeather = $headerIdeal['weather'] ?? null;
                                         $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
                                     ?>
                                     <th class="p-3 text-center font-bold text-slate-900 <?= $headerIndicative ? 'opacity-60' : '' ?>">
                                         <?= $dayHeaderFormatter->format($headerDay) ?>
                                         <br>
                                         <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
+                                        <?php if ($headerIdeal && $headerIdeal['hour']): ?>
+                                            <div class="mt-1 text-[10px] font-semibold text-ocean-brand">Idéal <?= $headerIdeal['hour'] ?></div>
+                                        <?php endif; ?>
                                         <?php if ($headerWeather): ?>
                                             <div class="mt-1 text-[10px] font-normal text-slate-500 leading-tight space-y-0.5">
                                                 <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
@@ -194,17 +216,17 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                         $cellIndicative = $cellDay > $indicativeCutoff;
                                         $cellTitle = htmlspecialchars($forecast['spot']['name']) . ' — ' . ucfirst($dateFormatter->format($cellDay));
                                     ?>
+                                    <?php
+                                        $statusIconFile = match ($daily_status['status']) {
+                                            'green' => 'green.jpg',
+                                            'orange' => 'orange.jpg',
+                                            'grey' => 'grey.jpg',
+                                            default => 'red.jpg',
+                                        };
+                                    ?>
                                     <td class="p-3 text-center <?= $cellIndicative ? 'opacity-60' : '' ?>">
                                         <button type="button" class="info-trigger" data-title="<?= $cellTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
-                                            <?php if ($daily_status['status'] === 'green'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-safe" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <?php elseif ($daily_status['status'] === 'orange'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                            <?php elseif ($daily_status['status'] === 'grey'): ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <?php else: ?>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <?php endif; ?>
+                                            <img src="assets/<?= $statusIconFile ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover" loading="lazy">
                                         </button>
                                     </td>
                                 <?php endforeach; ?>
@@ -213,7 +235,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                         </tbody>
                     </table>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Touchez une icône pour voir le détail des raisons. Les jours grisés (au-delà de <?= RELIABLE_FORECAST_DAYS ?> jours) sont des prévisions indicatives, moins fiables.</p>
+                <p class="text-xs text-slate-400 mt-2">« Idéal » indique la meilleure heure pour partir ce jour-là, et la météo affichée correspond à cette heure précise. Touchez une icône pour voir le détail des raisons. Les jours grisés (au-delà de <?= RELIABLE_FORECAST_DAYS ?> jours) sont des prévisions indicatives, moins fiables.</p>
             </section>
 
             <section>
@@ -379,6 +401,8 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                         seul le vent compte — pas de marée, pas de houle, un terrain idéal pour progresser sans stress.
                     </p>
 
+                    <img src="assets/kayak2.jpg" alt="Kayak posé sur les rochers aux Sables d'Olonne" class="w-full h-64 object-cover rounded-lg border border-slate-200 shadow-sm my-2">
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">La sécurité avant la sortie, pas pendant</h3>
                     <ul class="space-y-1 list-none pl-0">
                         <li>☐ Vérifie le sens du vent avant de mettre le kayak à l'eau.</li>
@@ -395,6 +419,8 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                         Ouvre l'app avant de partir. Regarde le score du jour. Si c'est vert, file à l'eau. Si c'est orange,
                         ajuste ton itinéraire vers un spot plus abrité. Si c'est rouge, la mer sera toujours là demain.
                     </p>
+
+                    <img src="assets/kaya3.jpg" alt="Kayak au coucher de soleil aux Sables d'Olonne" class="w-full h-64 object-cover rounded-lg border border-slate-200 shadow-sm my-2">
                 </div>
             </section>
 
@@ -433,11 +459,11 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                         attribution: '© OpenStreetMap contributors'
                     }).addTo(map);
 
-                    const colorMapping = {
-                        green: '#059669', // status-safe
-                        orange: '#D97706', // status-warning
-                        grey: '#94a3b8', // slate-400
-                        red: '#DC2626' // status-danger
+                    const iconMapping = {
+                        green: 'assets/green.jpg',
+                        orange: 'assets/orange.jpg',
+                        grey: 'assets/grey.jpg',
+                        red: 'assets/red.jpg'
                     };
 
                     mapData.forEach(data => {
@@ -447,9 +473,9 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
 
                         const icon = L.divIcon({
                             className: 'custom-div-icon',
-                            html: `<div style='background-color:${colorMapping[status]};' class='w-4 h-4 rounded-full border-2 border-white shadow-md'></div>`,
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
+                            html: `<img src="${iconMapping[status]}" style="width:24px;height:24px;border-radius:9999px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);object-fit:cover;">`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
                         });
 
                         L.marker([spot.lat, spot.lng], { icon: icon })
