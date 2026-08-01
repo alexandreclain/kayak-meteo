@@ -177,6 +177,10 @@ function fetchKayakSpots(map) {
         'https://overpass.openstreetmap.ru/api/interpreter'
     ];
     const mirrorTimeoutMs = 12000;
+    // Zone englobant tous les secteurs suivis par l'app (côte, Bauduère, marais Nord jusqu'à
+    // l'Île d'Olonne, estuaire du Payré à Talmont, lac de Tanchet), avec une marge de sécurité —
+    // plus simple et plus robuste à maintenir qu'une requête par spot (cf. config.php $spots).
+    const bbox = '46.4000,-1.8800,46.6300,-1.5900';
     // "waterway=slipway" n'est pas un tag OSM reconnu (0 usage recensé sur taginfo) : le bon
     // tag documenté est "leisure=slipway". On élargit aussi la recherche à d'autres façons de
     // documenter un accès kayak/canoë (cf. wiki.openstreetmap.org/wiki/Key:canoe et
@@ -184,14 +188,14 @@ function fetchKayakSpots(map) {
     // rampe (mise à l'eau portée), et statut d'accès légal au-delà du simple "yes".
     const query = `[out:json][timeout:25];
 (
-  node["leisure"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
-  way["leisure"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
-  node["waterway"="access_point"](46.4600,-1.8200,46.5400,-1.7000);
-  node["canoe"="put_in"](46.4600,-1.8200,46.5400,-1.7000);
-  node["canoe"~"^(yes|designated|permissive)$"](46.4600,-1.8200,46.5400,-1.7000);
-  way["canoe"~"^(yes|designated|permissive)$"](46.4600,-1.8200,46.5400,-1.7000);
-  node["sport"="canoe"](46.4600,-1.8200,46.5400,-1.7000);
-  way["sport"="canoe"](46.4600,-1.8200,46.5400,-1.7000);
+  node["leisure"="slipway"](${bbox});
+  way["leisure"="slipway"](${bbox});
+  node["waterway"="access_point"](${bbox});
+  node["canoe"="put_in"](${bbox});
+  node["canoe"~"^(yes|designated|permissive)$"](${bbox});
+  way["canoe"~"^(yes|designated|permissive)$"](${bbox});
+  node["sport"="canoe"](${bbox});
+  way["sport"="canoe"](${bbox});
 );
 out body;
 >;
