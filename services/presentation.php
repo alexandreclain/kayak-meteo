@@ -45,6 +45,64 @@ function dayScoreBadgeClasses(?int $score): string
 }
 
 /**
+ * Nom de fichier image (assets/) correspondant à un statut vert/orange/rouge/gris.
+ *
+ * @param string $status
+ * @return string
+ */
+function statusIconFile(string $status): string
+{
+    return match ($status) {
+        'green' => 'green.jpg',
+        'orange' => 'orange.jpg',
+        'grey' => 'grey.jpg',
+        default => 'red.jpg',
+    };
+}
+
+/**
+ * Même logique de palier que dayScoreBadgeClasses(), mais retourne l'image de statut
+ * correspondante (pour l'icône "en moyenne vert/orange/rouge" d'un jour).
+ *
+ * @param int|null $score
+ * @return string
+ */
+function dayScoreIconFile(?int $score): string
+{
+    if ($score === null) return 'grey.jpg';
+    if ($score >= 7) return 'green.jpg';
+    if ($score >= 4) return 'orange.jpg';
+    return 'red.jpg';
+}
+
+/**
+ * Sépare un nom de spot en partie principale + précision entre parenthèses, pour afficher
+ * cette dernière en plus discret (ex: "Port Olona (Cale publique)" → "Port Olona" + "Cale publique").
+ *
+ * @param string $name
+ * @return array ['main' => string, 'detail' => string|null]
+ */
+function splitSpotName(string $name): array
+{
+    if (preg_match('/^(.*?)\s*\((.*)\)\s*$/', $name, $matches)) {
+        return ['main' => $matches[1], 'detail' => $matches[2]];
+    }
+    return ['main' => $name, 'detail' => null];
+}
+
+/**
+ * Opacité dégressive selon l'éloignement dans les prévisions : J+0 pleine opacité, J+6
+ * plus estompé, pour traduire visuellement la fiabilité décroissante des prévisions.
+ *
+ * @param int $dayIndex 0 (aujourd'hui) à 6 (dans une semaine).
+ * @return float
+ */
+function dayFadeOpacity(int $dayIndex): float
+{
+    return max(0.55, round(1 - ($dayIndex * 0.075), 2));
+}
+
+/**
  * Traduit un code météo OMM (weathercode Open-Meteo) en icône + libellé lisible.
  *
  * @param int|null $code

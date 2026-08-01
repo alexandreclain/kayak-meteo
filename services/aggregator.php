@@ -413,6 +413,30 @@ function getIdealDepartureHours(array $spotAnalyses): array
 }
 
 /**
+ * Groups spots that share the exact same 7-day forecast (status + reasons for every day)
+ * into a single row, so the summary table doesn't repeat identical lines for spots that
+ * behave the same way all week.
+ *
+ * @param array $spotsForecast Result of getSpotsForecastSummary().
+ * @return array List of ['spots' => [spot, ...], 'daily_status' => [...]].
+ */
+function groupIdenticalForecasts(array $spotsForecast): array
+{
+    $groups = [];
+    foreach ($spotsForecast as $forecast) {
+        $signature = json_encode($forecast['daily_status']);
+        if (!isset($groups[$signature])) {
+            $groups[$signature] = [
+                'spots' => [],
+                'daily_status' => $forecast['daily_status'],
+            ];
+        }
+        $groups[$signature]['spots'][] = $forecast['spot'];
+    }
+    return array_values($groups);
+}
+
+/**
  * Récupère un aperçu météo "maintenant" (heure en cours, pas l'heure à venir utilisée pour
  * la carte de sécurité) : température, vent, UV, marée... pour le bloc de présentation.
  *

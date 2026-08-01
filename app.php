@@ -17,6 +17,7 @@ $finalSlots = getAggregatedSlots($spotAnalyses);
 
 // 3. Get the 7-day summary for the table and map
 $spotsForecast = getSpotsForecastSummary($spotAnalyses);
+$groupedForecasts = groupIdenticalForecasts($spotsForecast);
 
 // 4. Get the 0-10 navigability score per day (for the accordion header)
 $dayScores = getDayScores($spotAnalyses);

@@ -10,21 +10,25 @@ $sectors = [
         'name' => 'Côte des Sables',
         'lat' => 46.4960,
         'lng' => -1.7830,
+        'description' => 'Le secteur historique du kayak de mer aux Sables d\'Olonne : plages, chenaux et le lac de Tanchet pour s\'entraîner sans marée.',
     ],
     'talmont_estuary' => [
         'name' => 'Estuaire du Payré (Talmont)',
         'lat' => 46.4400,
         'lng' => -1.6700,
+        'description' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire, entre parcs ostréicoles et plage à rouleaux exposée.',
     ],
     'brem_north_marais' => [
         'name' => 'Marais Nord (Brem/Olonne)',
         'lat' => 46.5300,
         'lng' => -1.7800,
+        'description' => 'Le grand marais entre Olonne-sur-Mer et Brem-sur-Mer : un réseau de canaux calmes, rythmé par la marée.',
     ],
     'ile_olonne_marais' => [
         'name' => 'Marais Nord (Île d\'Olonne)',
         'lat' => 46.5900,
         'lng' => -1.8150,
+        'description' => 'La partie nord du marais, vers L\'Île-d\'Olonne : plus sauvage, où l\'Auzance et la Vertonne se croisent.',
     ]
 ];
 
