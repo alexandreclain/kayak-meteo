@@ -9,6 +9,7 @@ jobs:
   ftp-deploy:
     name: Déploiement
     runs-on: ubuntu-latest
+    environment: kayak
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v4
