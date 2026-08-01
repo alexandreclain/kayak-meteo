@@ -23,7 +23,7 @@ const REASON_DESCRIPTIONS = [
 ];
 
 /**
- * Classes Tailwind pour le badge de score /10 d'un jour, selon sa navigabilité.
+ * Classes Tailwind pour le badge de score /5 d'un jour, selon sa navigabilité.
  *
  * @param int|null $score
  * @return string
@@ -31,8 +31,8 @@ const REASON_DESCRIPTIONS = [
 function dayScoreBadgeClasses(?int $score): string
 {
     if ($score === null) return 'bg-slate-100 text-slate-500 border border-slate-200';
-    if ($score >= 7) return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-    if ($score >= 4) return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if ($score >= 3) return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    if ($score >= 2) return 'bg-amber-50 text-amber-700 border border-amber-200';
     return 'bg-red-50 text-red-700 border border-red-200';
 }
 
@@ -62,8 +62,8 @@ function statusIconFile(string $status): string
 function dayScoreIconFile(?int $score): string
 {
     if ($score === null) return 'grey.jpg';
-    if ($score >= 7) return 'green.jpg';
-    if ($score >= 4) return 'orange.jpg';
+    if ($score >= 3) return 'green.jpg';
+    if ($score >= 2) return 'orange.jpg';
     return 'red.jpg';
 }
 

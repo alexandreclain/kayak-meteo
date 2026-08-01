@@ -44,7 +44,17 @@ summary::-webkit-details-marker {
     }
 }
 
-/* "Scotch" décoratif façon photo de vacances, posé en haut de chaque image du site */
+/* "Scotch" décoratif façon photo de vacances, posé en haut de chaque image du site.
+   Le wrapper .tape-photo n'a volontairement pas d'overflow:hidden (contrairement à
+   .tape-photo-inner juste en dessous) pour que le scotch ne soit jamais rogné en haut. */
+.tape-photo {
+    position: relative;
+}
+.tape-photo-inner {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
 .tape {
     position: absolute;
     top: -12px;
@@ -52,12 +62,8 @@ summary::-webkit-details-marker {
     width: 88px;
     height: 30px;
     z-index: 10;
-    opacity: 0.85;
+    background-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
-    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.3) 0 6px, transparent 6px 12px);
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.35) 0 6px, transparent 6px 12px);
+    transform: translateX(-50%) rotate(-3deg);
 }
-.tape-yellow { background-color: #FDE68A; transform: translateX(-50%) rotate(-4deg); }
-.tape-pink   { background-color: #FBCFE8; transform: translateX(-50%) rotate(3deg); }
-.tape-blue   { background-color: #BAE6FD; transform: translateX(-50%) rotate(-2deg); }
-.tape-mint   { background-color: #A7F3D0; transform: translateX(-50%) rotate(4deg); }
-.tape-coral  { background-color: #FECACA; transform: translateX(-50%) rotate(-3deg); }

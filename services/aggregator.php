@@ -298,10 +298,13 @@ function buildHourlyGlobalStatus(array $spotAnalyses): array
 }
 
 /**
- * Computes a 0-10 navigability score per day, based on the best status available across
+ * Computes a 0-5 navigability score per day, based on the best status available across
  * ALL spots combined for each hour (i.e. "is there at least one good place to go").
  * Green hours count fully, orange hours partially, red hours count as zero; hours with
  * missing data are simply excluded from the average rather than penalizing the score.
+ * Échelle sur 5 (pas 10) pour rester lisible d'un coup d'œil, avec des seuils de badge
+ * volontairement cléments : une journée avec beaucoup de vert doit ressortir verte même
+ * si quelques heures orange viennent tirer la moyenne vers le bas.
  *
  * @param array $spotAnalyses Result of computeSpotAnalyses().
  * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
@@ -330,7 +333,7 @@ function getDayScores(array $spotAnalyses): array
         }
 
         $dayScores[$dayKey] = [
-            'score' => $countedHours > 0 ? (int) round(($creditSum / $countedHours) * 10) : null,
+            'score' => $countedHours > 0 ? (int) round(($creditSum / $countedHours) * 5) : null,
             'counted_hours' => $countedHours,
         ];
     }
