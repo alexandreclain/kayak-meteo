@@ -3,6 +3,9 @@ Options -MultiViews
 
 RewriteEngine On
 
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 RewriteRule ^\.git - [F,L]
 
 <FilesMatch "^\.">
@@ -17,5 +20,6 @@ RewriteRule ^\.git - [F,L]
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000"
     Header unset X-Powered-By
 </IfModule>
