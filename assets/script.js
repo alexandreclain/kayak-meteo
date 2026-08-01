@@ -177,12 +177,21 @@ function fetchKayakSpots(map) {
         'https://overpass.openstreetmap.ru/api/interpreter'
     ];
     const mirrorTimeoutMs = 12000;
+    // "waterway=slipway" n'est pas un tag OSM reconnu (0 usage recensé sur taginfo) : le bon
+    // tag documenté est "leisure=slipway". On élargit aussi la recherche à d'autres façons de
+    // documenter un accès kayak/canoë (cf. wiki.openstreetmap.org/wiki/Key:canoe et
+    // wiki.openstreetmap.org/wiki/Tag:waterway=access_point) : point d'accès à l'eau sans
+    // rampe (mise à l'eau portée), et statut d'accès légal au-delà du simple "yes".
     const query = `[out:json][timeout:25];
 (
-  node["waterway"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
-  way["waterway"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
-  node["canoe"="yes"](46.4600,-1.8200,46.5400,-1.7000);
+  node["leisure"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
+  way["leisure"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
+  node["waterway"="access_point"](46.4600,-1.8200,46.5400,-1.7000);
+  node["canoe"="put_in"](46.4600,-1.8200,46.5400,-1.7000);
+  node["canoe"~"^(yes|designated|permissive)$"](46.4600,-1.8200,46.5400,-1.7000);
+  way["canoe"~"^(yes|designated|permissive)$"](46.4600,-1.8200,46.5400,-1.7000);
   node["sport"="canoe"](46.4600,-1.8200,46.5400,-1.7000);
+  way["sport"="canoe"](46.4600,-1.8200,46.5400,-1.7000);
 );
 out body;
 >;
@@ -257,7 +266,7 @@ out skel qt;`;
 
                 const tags = el.tags || {};
                 const name = tags.name || 'Cale de mise à l\'eau';
-                const accessType = tags.waterway || tags.canoe || tags.sport || 'Accès kayak';
+                const accessType = tags.leisure || tags.waterway || tags.canoe || tags.sport || 'Accès kayak';
                 const surface = tags.surface ? '<br>Surface : ' + tags.surface : '';
 
                 L.marker([lat, lon], { icon: kayakSpotIcon })
