@@ -83,18 +83,6 @@ function splitSpotName(string $name): array
 }
 
 /**
- * Opacité dégressive selon l'éloignement dans les prévisions : J+0 pleine opacité, J+6
- * plus estompé, pour traduire visuellement la fiabilité décroissante des prévisions.
- *
- * @param int $dayIndex 0 (aujourd'hui) à 6 (dans une semaine).
- * @return float
- */
-function dayFadeOpacity(int $dayIndex): float
-{
-    return max(0.55, round(1 - ($dayIndex * 0.075), 2));
-}
-
-/**
  * Rend le détail météo complet d'une heure donnée (grille 3 colonnes), utilisé à la fois pour
  * le détail d'un créneau et pour le panneau d'info de la synthèse : les deux affichent ainsi
  * exactement les mêmes données, dans le même ordre, avec la même apparence — plus de risque

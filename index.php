@@ -242,15 +242,14 @@ $faqItems = [
                 </h2>
                 <p class="text-sm text-slate-500 mb-4">
                     Un coup d'œil sur la semaine pour planifier vos sorties à l'avance. Les spots identiques toute la
-                    semaine sont regroupés sur une seule ligne. Plus on avance dans les 7 jours, plus l'affichage
-                    s'estompe : les prévisions à J+1 sont bien plus fiables qu'à J+7.
+                    semaine sont regroupés sur une seule ligne.
                 </p>
 
                 <?php
                     // Largeurs partagées entre la table météo et la table de données : deux vraies
                     // <table> distinctes, alignées via des <col> identiques (table-layout: fixed).
-                    $dayColWidth = 7;
-                    $firstColWidth = 100 - ($dayColWidth * 7);
+                    $firstColWidth = 40;
+                    $dayColWidth = (100 - $firstColWidth) / 7;
                     $colWidths = array_merge([$firstColWidth], array_fill(0, 7, $dayColWidth));
                 ?>
                 <div class="overflow-x-auto">
@@ -266,11 +265,10 @@ $faqItems = [
                                     <?php for ($d = 0; $d < 7; $d++): ?>
                                         <?php
                                             $headerDay = (new DateTime())->modify("+$d days");
-                                            $headerOpacity = dayFadeOpacity($d);
                                             $headerWeather = $idealDepartureHours[$headerDay->format('Y-m-d')]['weather'] ?? null;
                                             $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
                                         ?>
-                                        <td class="text-center text-[11px] text-slate-500 leading-tight px-1" style="opacity: <?= $headerOpacity ?>">
+                                        <td class="text-center text-[11px] text-slate-500 leading-tight px-1">
                                             <?php if ($headerWeather): ?>
                                                 <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
                                                 <?php if ($headerWeather['wind_speed'] !== null): ?><div>💨 <?= round($headerWeather['wind_speed']) ?> km/h</div><?php endif; ?>
@@ -289,11 +287,8 @@ $faqItems = [
                                 <tr>
                                     <th class="p-3 font-bold text-slate-900">Les meilleurs spots</th>
                                     <?php for ($d = 0; $d < 7; $d++): ?>
-                                        <?php
-                                            $headerDay = (new DateTime())->modify("+$d days");
-                                            $headerOpacity = dayFadeOpacity($d);
-                                        ?>
-                                        <th class="p-3 text-center font-bold text-slate-900" style="opacity: <?= $headerOpacity ?>">
+                                        <?php $headerDay = (new DateTime())->modify("+$d days"); ?>
+                                        <th class="p-3 text-center font-bold text-slate-900">
                                             <?= $dayHeaderFormatter->format($headerDay) ?>
                                             <br>
                                             <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
@@ -315,11 +310,10 @@ $faqItems = [
                                         <?php foreach ($group['daily_status'] as $d => $daily_status): ?>
                                             <?php
                                                 $cellDay = (new DateTime())->modify("+$d days");
-                                                $cellOpacity = dayFadeOpacity($d);
                                                 $groupTitle = htmlspecialchars(implode(', ', array_map(fn($s) => $s['name'], $group['spots']))) . ' — ' . ucfirst($dateFormatter->format($cellDay));
                                                 $weatherHtml = renderWeatherDetailGrid($daily_status['weather'] ?? null, $groupShowTide);
                                             ?>
-                                            <td class="p-3 text-center" style="opacity: <?= $cellOpacity ?>">
+                                            <td class="p-3 text-center">
                                                 <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' data-weather-html='<?= htmlspecialchars($weatherHtml, ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
                                                     <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover border-2 border-white/70 ring-1 ring-slate-900/10 shadow-md" loading="lazy">
                                                 </button>
@@ -519,6 +513,14 @@ $faqItems = [
                     // s'étendre sur la hauteur combinée des deux blocs de texte plutôt que d'être
                     // dupliquée pour chacun.
                     $mergedSectorGroups = ['ile_olonne_marais' => 'brem_north_marais'];
+                    // Une couleur distincte et discrète par zone, pour repérer d'un coup d'œil
+                    // mer/marais/lac/mixte sans changer la police ni la discrétion du texte.
+                    $zoneTextColors = [
+                        'MER' => 'text-sky-600/80',
+                        'MARAIS' => 'text-teal-600/80',
+                        'LAC' => 'text-violet-600/80',
+                        'MIXTE' => 'text-indigo-600/80',
+                    ];
                 ?>
                 <div class="space-y-8">
                     <?php foreach ($sectors as $sectorId => $sector): ?>
@@ -553,7 +555,7 @@ $faqItems = [
                                             <?php foreach ($groupSectorSpots as $spot): ?>
                                                 <li>
                                                     <strong class="text-slate-900"><?= htmlspecialchars($spot['name']) ?></strong>
-                                                    <span class="text-slate-400">— <?= htmlspecialchars($spot['zone']) ?> —</span>
+                                                    <span class="<?= $zoneTextColors[$spot['zone']] ?? 'text-slate-400' ?>">— <?= htmlspecialchars($spot['zone']) ?> —</span>
                                                     <?= htmlspecialchars($spot['rando']) ?>
                                                 </li>
                                             <?php endforeach; ?>

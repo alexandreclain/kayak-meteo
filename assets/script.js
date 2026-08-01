@@ -167,7 +167,16 @@ document.addEventListener('DOMContentLoaded', function () {
  * @returns {Promise<void>}
  */
 function fetchKayakSpots(map) {
-    const overpassUrl = 'https://overpass-api.de/api/interpreter';
+    // Le serveur public overpass-api.de est souvent saturé (504/429) : on passe par plusieurs
+    // miroirs, dans l'ordre, et on abandonne un miroir trop lent au bout de 12s plutôt que
+    // d'attendre indéfiniment.
+    const overpassMirrors = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.fr/api/interpreter',
+        'https://overpass.openstreetmap.ru/api/interpreter'
+    ];
+    const mirrorTimeoutMs = 12000;
     const query = `[out:json][timeout:25];
 (
   node["waterway"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
@@ -186,16 +195,35 @@ out skel qt;`;
         iconAnchor: [11, 11]
     });
 
-    return fetch(overpassUrl, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(query)
-    })
-        .then(function (response) {
-            if (!response.ok) {
-                throw new Error('Réponse Overpass invalide (HTTP ' + response.status + ')');
-            }
-            return response.json();
+    function queryMirror(index) {
+        if (index >= overpassMirrors.length) {
+            return Promise.reject(new Error('Tous les serveurs Overpass ont échoué ou sont trop lents.'));
+        }
+
+        const mirrorUrl = overpassMirrors[index];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(function () { controller.abort(); }, mirrorTimeoutMs);
+
+        return fetch(mirrorUrl, {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(query),
+            signal: controller.signal
         })
+            .then(function (response) {
+                clearTimeout(timeoutId);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .catch(function (error) {
+                clearTimeout(timeoutId);
+                console.warn('Serveur Overpass indisponible (' + mirrorUrl + ') : ' + error.message + ' — tentative avec le miroir suivant...');
+                return queryMirror(index + 1);
+            });
+    }
+
+    return queryMirror(0)
         .then(function (data) {
             const elements = (data && data.elements) || [];
             if (elements.length === 0) {
