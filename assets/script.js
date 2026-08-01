@@ -22,7 +22,6 @@ tailwind.config = {
     },
 };
 
-// PWA : enregistre le service worker pour rendre l'app installable
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         navigator.serviceWorker.register('/sw.js').catch(function (error) {
@@ -31,8 +30,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Panneau d'info : ouvre au clic/tap sur une icône de statut, avec le détail des raisons
-// et, quand disponible, le détail météo complet de ce créneau.
 document.addEventListener('DOMContentLoaded', function () {
     const sheet = document.getElementById('info-sheet');
     const backdrop = document.getElementById('info-sheet-backdrop');
@@ -103,7 +100,6 @@ document.addEventListener('DOMContentLoaded', function () {
     backdrop.addEventListener('click', closeInfoSheet);
 });
 
-// Bouton "retour en haut" : apparaît après un peu de défilement, scroll fluide au clic.
 document.addEventListener('DOMContentLoaded', function () {
     const backToTop = document.getElementById('back-to-top');
     if (!backToTop) return;
@@ -122,8 +118,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// Effet de parallaxe léger sur les photos du site : chaque image glisse doucement selon sa
-// position à l'écran pendant le défilement. Désactivé si l'utilisateur préfère moins de mouvement.
 document.addEventListener('DOMContentLoaded', function () {
     const images = document.querySelectorAll('.parallax-img');
     if (!images.length) return;
@@ -157,19 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
     updateParallax();
 });
 
-// Cales de mise à l'eau et accès canoë-kayak recensés sur OpenStreetMap (API Overpass),
-// affichés en complément des spots suivis par l'app sur la carte Leaflet.
-/**
- * Récupère les cales de mise à l'eau et accès canoë-kayak OSM pour la zone des Sables-d'Olonne
- * et les ajoute à la carte Leaflet fournie, avec l'icône assets/blue.jpg.
- *
- * @param {L.Map} map Instance Leaflet déjà initialisée.
- * @returns {Promise<void>}
- */
 function fetchKayakSpots(map) {
-    // Le serveur public overpass-api.de est souvent saturé (504/429) : on passe par plusieurs
-    // miroirs, dans l'ordre, et on abandonne un miroir trop lent au bout de 12s plutôt que
-    // d'attendre indéfiniment.
     const overpassMirrors = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
@@ -177,15 +159,7 @@ function fetchKayakSpots(map) {
         'https://overpass.openstreetmap.ru/api/interpreter'
     ];
     const mirrorTimeoutMs = 12000;
-    // Zone englobant tous les secteurs suivis par l'app (côte, Bauduère, marais Nord jusqu'à
-    // l'Île d'Olonne, estuaire du Payré à Talmont, lac de Tanchet), avec une marge de sécurité —
-    // plus simple et plus robuste à maintenir qu'une requête par spot (cf. config.php $spots).
     const bbox = '46.4000,-1.8800,46.6300,-1.5900';
-    // "waterway=slipway" n'est pas un tag OSM reconnu (0 usage recensé sur taginfo) : le bon
-    // tag documenté est "leisure=slipway". On élargit aussi la recherche à d'autres façons de
-    // documenter un accès kayak/canoë (cf. wiki.openstreetmap.org/wiki/Key:canoe et
-    // wiki.openstreetmap.org/wiki/Tag:waterway=access_point) : point d'accès à l'eau sans
-    // rampe (mise à l'eau portée), et statut d'accès légal au-delà du simple "yes".
     const query = `[out:json][timeout:25];
 (
   node["leisure"="slipway"](${bbox});
@@ -244,8 +218,6 @@ out skel qt;`;
                 return;
             }
 
-            // Les "way" (cales représentées par une ligne) n'ont pas de lat/lon directe : on la
-            // calcule à partir de leurs nœuds constitutifs, récupérés via "out skel qt" / ">".
             const nodesById = {};
             elements.forEach(function (el) {
                 if (el.type === 'node') nodesById[el.id] = el;
@@ -265,7 +237,7 @@ out skel qt;`;
                     lat = points.reduce(function (sum, p) { return sum + p.lat; }, 0) / points.length;
                     lon = points.reduce(function (sum, p) { return sum + p.lon; }, 0) / points.length;
                 } else {
-                    return; // nœud sans tags, référencé seulement par un "way" : rien à afficher
+                    return;
                 }
 
                 const tags = el.tags || {};

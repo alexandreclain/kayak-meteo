@@ -5,8 +5,6 @@ html {
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: #F8FAFC;
-    /* Deux taches de la couleur de fond atténuent le motif dans les zones de lecture,
-       et le motif de vagues (plus espacé, plus léger) ne couvre plus tout l'écran. */
     background-image:
         radial-gradient(ellipse 620px 520px at 12% 10%, rgba(248, 250, 252, 0.9) 0%, rgba(248, 250, 252, 0) 70%),
         radial-gradient(ellipse 620px 520px at 88% 60%, rgba(248, 250, 252, 0.9) 0%, rgba(248, 250, 252, 0) 70%),
@@ -14,7 +12,6 @@ body {
     background-repeat: no-repeat, no-repeat, repeat;
 }
 
-/* Icônes cliquables de la synthèse : neutralise le style natif de <button> */
 .info-trigger {
     background: none;
     border: none;
@@ -24,7 +21,6 @@ body {
     cursor: pointer;
 }
 
-/* Accordéon des créneaux : masque le triangle natif de <summary> */
 summary {
     list-style: none;
 }
@@ -32,7 +28,6 @@ summary::-webkit-details-marker {
     display: none;
 }
 
-/* Effet de parallaxe léger sur les photos (assets/script.js pilote --parallax-offset) */
 .parallax-img {
     transform: translateY(var(--parallax-offset, 0px)) scale(1.15);
     transition: transform 0.05s linear;
@@ -44,9 +39,6 @@ summary::-webkit-details-marker {
     }
 }
 
-/* "Scotch" décoratif façon photo de vacances, posé en haut de chaque image du site.
-   Le wrapper .tape-photo n'a volontairement pas d'overflow:hidden (contrairement à
-   .tape-photo-inner juste en dessous) pour que le scotch ne soit jamais rogné en haut. */
 .tape-photo {
     position: relative;
 }

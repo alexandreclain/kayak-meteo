@@ -1,10 +1,8 @@
 <?php
-// config.php
 
 require_once __DIR__ . '/services/env.php';
 loadEnv(__DIR__ . '/.env');
 
-// --- SECTEURS GÉOGRAPHIQUES POUR LES APPELS API ---
 $sectors = [
     'sables_coast' => [
         'name' => 'Côte des Sables',
@@ -32,9 +30,7 @@ $sectors = [
     ]
 ];
 
-// --- LISTE DES SPOTS DE KAYAK CORRIGÉS ---
 $spots = [
-    // --- SPOTS MER ---
     [
         'id' => 'paracou',
         'name' => 'Plage de La Paracou',
@@ -71,8 +67,6 @@ $spots = [
         'lng' => -1.7705,
         'rando' => 'Mise à l\'eau via le chenal sud de la baie vers l\'anse de Cayola.',
     ],
-
-    // --- SPOTS PORT / MIXTE ---
     [
         'id' => 'port_olona',
         'name' => 'Port Olona (Cale publique - La Cabaude)',
@@ -82,8 +76,6 @@ $spots = [
         'lng' => -1.795720,
         'rando' => 'Cale protégée pour rejoindre le chenal ou remonter vers la rivière Vertonne.',
     ],
-
-    // --- SPOTS MARAIS & ESTUAIRES ---
     [
         'id' => 'salines',
         'name' => 'Embarcadère des Salines (L\'Aubraie)',
@@ -237,8 +229,6 @@ $spots = [
         'lng' => -1.616680,
         'rando' => 'Débarcadère au cœur du bourg de Talmont-Saint-Hilaire, sur le Payré.',
     ],
-
-    // --- PLAN D'EAU FERMÉ ---
     [
         'id' => 'lac_tanchet',
         'name' => 'Lac de Tanchet',
@@ -250,53 +240,34 @@ $spots = [
     ]
 ];
 
-// --- PARAMETRES DE SECURITE ---
-
-// -- Règles Générales --
-// Vent de terre (offshore) est considéré dangereux si sa force dépasse cette valeur (en km/h)
 define('OFFSHORE_WIND_DANGER_THRESHOLD', 8);
-// La côte étant orientée Sud-Ouest, tout ce qui vient du secteur Nord-Est est dangereux.
-define('OFFSHORE_WIND_ANGLES', [0, 112.5]); // [Angle de début, Angle de fin]
+define('OFFSHORE_WIND_ANGLES', [0, 112.5]);
 
-// -- Règles MER --
 define('SEA_WIND_GREEN', 12);
 define('SEA_SWELL_GREEN', 0.4);
 define('SEA_WIND_ORANGE', 20);
 define('SEA_SWELL_ORANGE', 0.8);
 
-// -- Règles MARAIS --
 define('MARSH_WIND_GREEN', 18);
 define('MARSH_WIND_ORANGE', 25);
-// Fenêtre de marée (Pleine Mer +/- X)
-define('TIDE_WINDOW_GREEN_SECONDS', 90 * 60); // 1h30
-define('TIDE_WINDOW_ORANGE_SECONDS', 150 * 60); // 2h30
+define('TIDE_WINDOW_GREEN_SECONDS', 90 * 60);
+define('TIDE_WINDOW_ORANGE_SECONDS', 150 * 60);
 
-// -- Règles LAC --
 define('LAKE_WIND_ORANGE', 30);
 define('LAKE_WIND_GREEN', 20);
 
-// -- Rafales --
-// Marge au-delà du seuil orange d'une zone à partir de laquelle une rafale devient dangereuse
 define('GUST_DANGER_MARGIN', 10);
 
-// -- Orage --
-// Codes météo OMM (weathercode Open-Meteo) correspondant à un orage
 define('STORM_WEATHER_CODES', [95, 96, 99]);
 
-// -- Fiabilité des prévisions --
-// Au-delà de ce nombre de jours, les prévisions sont affichées comme indicatives
 define('RELIABLE_FORECAST_DAYS', 3);
 
-// --- CLÉS API (définies dans .env, voir .env.example) ---
 define('STORMGLASS_API_KEY', getenv('STORMGLASS_API_KEY') ?: '');
 define('OPENWEATHER_API_KEY', getenv('OPENWEATHER_API_KEY') ?: '');
 define('METEO_FRANCE_API_KEY', getenv('METEO_FRANCE_API_KEY') ?: '');
 define('SHOM_API_KEY', getenv('SHOM_API_KEY') ?: '');
 define('COPERNICUS_API_KEY', getenv('COPERNICUS_API_KEY') ?: '');
 
-// --- PARAMETRES TECHNIQUES ---
-// Durée de validité du cache en secondes (1 heure = 3600 secondes)
 define('CACHE_DURATION', 3600);
 
-// Définir le fuseau horaire pour toutes les fonctions de date/heure
 date_default_timezone_set('Europe/Paris');

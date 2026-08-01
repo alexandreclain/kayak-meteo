@@ -1,12 +1,5 @@
 <?php
-// services/weather.php
 
-/**
- * Helper function to make cURL API calls.
- * @param string $url
- * @param array $headers
- * @return array ['response' => string, 'http_code' => int]
- */
 function _callApi(string $url, array $headers = []): array
 {
     $ch = curl_init();
@@ -25,15 +18,6 @@ function _callApi(string $url, array $headers = []): array
     return ['response' => $response, 'http_code' => $httpCode];
 }
 
-/**
- * Fetches wave height and sea level (tide signal) from Open-Meteo's free Marine API.
- * This is the primary source for houle/marée data (same provider as the main forecast,
- * no API key required).
- *
- * @param float $lat
- * @param float $lng
- * @return array Raw Open-Meteo marine payload, or [] on failure.
- */
 function _fetchMarineData(float $lat, float $lng): array
 {
     $apiUrl = sprintf(
@@ -55,14 +39,6 @@ function _fetchMarineData(float $lat, float $lng): array
     return $data;
 }
 
-/**
- * Derives high-tide timestamps from a continuous sea-level-height series, by finding
- * local maxima. Used because Open-Meteo does not expose tide extremes directly.
- *
- * @param array $times ISO8601 hourly timestamps.
- * @param array $seaLevels Sea level height (m) for each timestamp, same length as $times.
- * @return array List of ISO8601 timestamps at high tide.
- */
 function _extractHighTideTimes(array $times, array $seaLevels): array
 {
     $highTideTimes = [];
@@ -85,14 +61,6 @@ function _extractHighTideTimes(array $times, array $seaLevels): array
     return $highTideTimes;
 }
 
-/**
- * Fetches fallback wave data from Stormglass.io API. Used only as a last resort if
- * the Marine API above is unavailable, since Stormglass's free tier has a very low
- * daily quota.
- * @param float $lat
- * @param float $lng
- * @return array Formatted data compatible with Open-Meteo structure.
- */
 function _fetchStormglassData(float $lat, float $lng): array
 {
     if (!defined('STORMGLASS_API_KEY') || STORMGLASS_API_KEY === '') {
@@ -113,7 +81,6 @@ function _fetchStormglassData(float $lat, float $lng): array
         return [];
     }
 
-    // Reformat Stormglass data to match Open-Meteo structure for easy merging
     $formattedData = [
         'hourly' => [
             'time' => [],
@@ -122,7 +89,6 @@ function _fetchStormglassData(float $lat, float $lng): array
     ];
 
     foreach ($data['hours'] as $hourData) {
-        // Stormglass gives values in a nested array, we take the first available source (e.g., 'sg')
         $waveHeight = $hourData['waveHeight']['sg'] ?? null;
 
         $formattedData['hourly']['time'][] = (new DateTime($hourData['time']))->format('Y-m-d\TH:i');
@@ -132,15 +98,6 @@ function _fetchStormglassData(float $lat, float $lng): array
     return $formattedData;
 }
 
-/**
- * Fills null values of $field in $primaryData['hourly'] using $secondaryData['hourly'],
- * matching entries by timestamp.
- *
- * @param array $primaryData
- * @param array $secondaryData
- * @param string $field
- * @return array The merged data.
- */
 function _mergeByTime(array $primaryData, array $secondaryData, string $field): array
 {
     if (empty($secondaryData['hourly']['time']) || empty($secondaryData['hourly'][$field])) {
@@ -163,35 +120,24 @@ function _mergeByTime(array $primaryData, array $secondaryData, string $field): 
     return $primaryData;
 }
 
-/**
- * Récupère les données météo depuis l'API Open-Meteo ou le cache local.
- *
- * @param float $lat Latitude du spot.
- * @param float $lng Longitude du spot.
- * @return array Les données météo décodées ou un tableau d'erreur.
- */
 function getWeatherData(float $lat, float $lng): array
 {
     $cacheFile = sprintf(__DIR__ . '/../cache/weather_data_%s.json', md5($lat . '_' . $lng));
 
-    // Vérification du cache
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < CACHE_DURATION) {
         $jsonData = file_get_contents($cacheFile);
         $cachedData = json_decode($jsonData, true);
-        // Si le cache est valide et n'est pas un ancien message d'erreur
         if ($cachedData !== null && !isset($cachedData['error'])) {
             return $cachedData;
         }
     }
 
-    // Construction de l'URL de l'API Open-Meteo (vent, rafales, météo, températures, UV, soleil)
     $forecastApiUrl = sprintf(
         "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weathercode,uv_index,sea_surface_temperature&daily=sunrise,sunset&timezone=auto&wind_speed_unit=kmh&forecast_days=7",
         $lat,
         $lng
     );
 
-    // --- 1. Appel à l'API Météo (critique) ---
     $forecastApiResult = _callApi($forecastApiUrl);
 
     if ($forecastApiResult['http_code'] !== 200 || $forecastApiResult['response'] === false) {
@@ -217,10 +163,6 @@ function getWeatherData(float $lat, float $lng): array
     $weatherData['hourly']['wave_height'] = array_fill(0, count($weatherData['hourly']['time']), null);
     $weatherData['hourly']['sea_level_height_msl'] = array_fill(0, count($weatherData['hourly']['time']), null);
 
-    // --- 2. Houle + marée : API Marine d'Open-Meteo (gratuite, même fournisseur) ---
-    // Le "tide_time_high" est déduit des maxima locaux du niveau de la mer, car
-    // Open-Meteo n'expose pas directement les heures de pleine mer. Le niveau horaire
-    // est aussi conservé pour déduire le sens de la marée (montante/descendante).
     $marineData = _fetchMarineData($lat, $lng);
     if (!empty($marineData['hourly']['time'])) {
         $weatherData = _mergeByTime($weatherData, $marineData, 'wave_height');
@@ -231,7 +173,6 @@ function getWeatherData(float $lat, float $lng): array
         );
     }
 
-    // --- 3. Repli : si la houle est toujours manquante, Stormglass en dernier recours ---
     $isSwellMissing = true;
     foreach ($weatherData['hourly']['wave_height'] as $value) {
         if ($value !== null) {
@@ -247,7 +188,6 @@ function getWeatherData(float $lat, float $lng): array
         }
     }
 
-    // --- 4. Mise en cache et retour ---
     if (!is_dir(dirname($cacheFile))) {
         mkdir(dirname($cacheFile), 0755, true);
     }

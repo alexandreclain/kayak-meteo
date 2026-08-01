@@ -32,14 +32,12 @@ self.addEventListener('fetch', (event) => {
     const isStaticAsset = STATIC_ASSETS.some((asset) => url.pathname === asset);
 
     if (isStaticAsset) {
-        // Fichiers statiques : cache en priorité, réseau en secours
         event.respondWith(
             caches.match(request).then((cached) => cached || fetch(request))
         );
         return;
     }
 
-    // Page dynamique (météo à jour) : réseau en priorité, cache en secours hors-ligne
     event.respondWith(
         fetch(request)
             .then((response) => {

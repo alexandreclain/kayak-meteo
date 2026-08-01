@@ -1,10 +1,5 @@
 <?php
-// services/presentation.php - Textes d'affichage (séparés de la logique métier)
 
-/**
- * Explique concrètement le risque derrière chaque raison retournée par rules.php,
- * pour que l'utilisateur comprenne pourquoi un créneau est déconseillé et pas seulement "quoi".
- */
 const REASON_DESCRIPTIONS = [
     'Vent fort' => "Le vent dépasse le seuil de sécurité de la zone : risque de perte de contrôle du kayak et de dérive rapide.",
     'Vent modéré' => "Vent proche du seuil de vigilance : praticable pour un pagayeur à l'aise, restez prudent et surveillez l'évolution.",
@@ -22,12 +17,6 @@ const REASON_DESCRIPTIONS = [
     'Données indisponibles pour ce jour' => "Aucune donnée exploitable pour cette journée : vérifiez la météo par un autre moyen avant de partir.",
 ];
 
-/**
- * Classes Tailwind pour le badge de score /5 d'un jour, selon sa navigabilité.
- *
- * @param int|null $score
- * @return string
- */
 function dayScoreBadgeClasses(?int $score): string
 {
     if ($score === null) return 'bg-slate-100 text-slate-500 border border-slate-200';
@@ -36,12 +25,6 @@ function dayScoreBadgeClasses(?int $score): string
     return 'bg-red-50 text-red-700 border border-red-200';
 }
 
-/**
- * Nom de fichier image (assets/) correspondant à un statut vert/orange/rouge/gris.
- *
- * @param string $status
- * @return string
- */
 function statusIconFile(string $status): string
 {
     return match ($status) {
@@ -52,13 +35,6 @@ function statusIconFile(string $status): string
     };
 }
 
-/**
- * Même logique de palier que dayScoreBadgeClasses(), mais retourne l'image de statut
- * correspondante (pour l'icône "en moyenne vert/orange/rouge" d'un jour).
- *
- * @param int|null $score
- * @return string
- */
 function dayScoreIconFile(?int $score): string
 {
     if ($score === null) return 'grey.jpg';
@@ -67,13 +43,6 @@ function dayScoreIconFile(?int $score): string
     return 'red.jpg';
 }
 
-/**
- * Sépare un nom de spot en partie principale + précision entre parenthèses, pour afficher
- * cette dernière en plus discret (ex: "Port Olona (Cale publique)" → "Port Olona" + "Cale publique").
- *
- * @param string $name
- * @return array ['main' => string, 'detail' => string|null]
- */
 function splitSpotName(string $name): array
 {
     if (preg_match('/^(.*?)\s*\((.*)\)\s*$/', $name, $matches)) {
@@ -82,16 +51,6 @@ function splitSpotName(string $name): array
     return ['main' => $name, 'detail' => null];
 }
 
-/**
- * Rend le détail météo complet d'une heure donnée (grille 3 colonnes), utilisé à la fois pour
- * le détail d'un créneau et pour le panneau d'info de la synthèse : les deux affichent ainsi
- * exactement les mêmes données, dans le même ordre, avec la même apparence — plus de risque
- * de divergence entre les deux vues.
- *
- * @param array|null $weather Tableau météo produit par rules.php.
- * @param bool $showTide La marée n'a de sens que si un marais est concerné par ce contexte.
- * @return string HTML (chaîne vide si $weather est absent).
- */
 function renderWeatherDetailGrid(?array $weather, bool $showTide): string
 {
     if (!$weather) {
@@ -102,7 +61,6 @@ function renderWeatherDetailGrid(?array $weather, bool $showTide): string
 
     ob_start(); ?>
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 text-left">
-        <!-- Ligne 1 : météo, UV, température de l'air -->
         <div class="flex items-center gap-1.5" title="Conditions générales">
             <span><?= $wx['icon'] ?></span>
             <span><?= $wx['label'] ?></span>
@@ -120,7 +78,6 @@ function renderWeatherDetailGrid(?array $weather, bool $showTide): string
         </div>
         <?php endif; ?>
 
-        <!-- Ligne 2 : vent (+ direction), houle, température de l'eau (juste sous celle de l'air) -->
         <?php if ($weather['wind_speed'] !== null): ?>
         <div class="flex items-center gap-1.5" title="Vent moyen (rafales) et direction">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
@@ -160,12 +117,6 @@ function renderWeatherDetailGrid(?array $weather, bool $showTide): string
     return ob_get_clean();
 }
 
-/**
- * Icône représentant le sens de la marée.
- *
- * @param string|null $direction 'montante', 'descendante', 'étale' ou null.
- * @return string
- */
 function tideDirectionIcon(?string $direction): string
 {
     return match ($direction) {
@@ -175,12 +126,6 @@ function tideDirectionIcon(?string $direction): string
     };
 }
 
-/**
- * Traduit un code météo OMM (weathercode Open-Meteo) en icône + libellé lisible.
- *
- * @param int|null $code
- * @return array ['icon' => string, 'label' => string]
- */
 function weatherCodeToLabel(?int $code): array
 {
     if ($code === null) {

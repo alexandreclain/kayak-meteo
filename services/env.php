@@ -1,10 +1,5 @@
 <?php
-// services/env.php
 
-/**
- * Loads key=value pairs from a .env file into getenv()/$_ENV.
- * Lines starting with # are ignored. Silently does nothing if the file is absent.
- */
 function loadEnv(string $path): void
 {
     if (!is_file($path)) {

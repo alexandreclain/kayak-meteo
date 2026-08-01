@@ -1,12 +1,5 @@
 <?php
-// services/aggregator.php
 
-/**
- * Fetches weather data for every sector, keyed by sector id.
- *
- * @param array $sectors The sectors from config.
- * @return array Weather data (or error payload) per sector id.
- */
 function getSectorWeatherData(array $sectors): array
 {
     $sectorWeatherData = [];
@@ -16,13 +9,6 @@ function getSectorWeatherData(array $sectors): array
     return $sectorWeatherData;
 }
 
-/**
- * Builds the list of human-readable API error messages, one per sector that failed.
- *
- * @param array $sectors The sectors from config.
- * @param array $sectorWeatherData Result of getSectorWeatherData().
- * @return array List of error strings.
- */
 function getSectorApiErrors(array $sectors, array $sectorWeatherData): array
 {
     $apiErrors = [];
@@ -35,14 +21,6 @@ function getSectorApiErrors(array $sectors, array $sectorWeatherData): array
     return $apiErrors;
 }
 
-/**
- * Computes the hourly analysis for every spot once, so downstream consumers
- * (slots, 7-day summary, day scores) don't each re-fetch/re-analyze the same data.
- *
- * @param array $spots The list of spots from config.
- * @param array $sectorWeatherData Result of getSectorWeatherData().
- * @return array [$spotId => ['spot' => ..., 'analysis' => getHourlyAnalysisForSpot() result]]
- */
 function computeSpotAnalyses(array $spots, array $sectorWeatherData): array
 {
     $spotAnalyses = [];
@@ -59,13 +37,6 @@ function computeSpotAnalyses(array $spots, array $sectorWeatherData): array
     return $spotAnalyses;
 }
 
-/**
- * Builds the list of relevant zone analyses (sea/marsh/lake) for a spot, based on its zone.
- *
- * @param array $hourAnalysis Analysis for one hour, as returned by getHourlyAnalysisForSpot().
- * @param string $zone The spot's zone (MER, MARAIS, LAC, MIXTE).
- * @return array List of ['status' => ..., 'reasons' => ...] applicable to this zone.
- */
 function getPossibleAnalyses(array $hourAnalysis, string $zone): array
 {
     $possibleAnalyses = [];
@@ -81,30 +52,16 @@ function getPossibleAnalyses(array $hourAnalysis, string $zone): array
     return $possibleAnalyses;
 }
 
-/**
- * Ranks a status so the "best" one can be picked among several zone analyses.
- * 'grey' (donnée manquante) est volontairement mieux classé que 'red' (danger confirmé) :
- * on ne veut pas afficher un créneau comme dangereux simplement parce qu'une donnée manque.
- *
- * @param string $status
- * @return int
- */
 function statusRank(string $status): int
 {
     return match ($status) {
         'green' => 3,
         'orange' => 2,
         'grey' => 1,
-        default => 0, // red
+        default => 0,
     };
 }
 
-/**
- * Resolves the best status (green > orange > grey > red) among a list of zone analyses.
- *
- * @param array $possibleAnalyses List of ['status' => ..., 'reasons' => ...].
- * @return array ['status' => ..., 'reasons' => ...] the best one found.
- */
 function resolveBestStatus(array $possibleAnalyses): array
 {
     $best = ['status' => 'red', 'reasons' => []];
@@ -125,22 +82,15 @@ function resolveBestStatus(array $possibleAnalyses): array
     return $best;
 }
 
-/**
- * Analyzes conditions for every spot and aggregates them into contiguous favorable slots.
- *
- * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array The final list of slots, sorted chronologically.
- */
 function getAggregatedSlots(array $spotAnalyses): array
 {
     $aggregatedSlots = [];
     $now = new DateTime();
 
-    // 1. Merge every spot's hourly analysis into per-hour zone buckets
     foreach ($spotAnalyses as $entry) {
         $spot = $entry['spot'];
         foreach ($entry['analysis'] as $hour => $analysis) {
-            $aggregatedSlots[$hour]['weather'] = $analysis['weather']; // Store weather details for the hour
+            $aggregatedSlots[$hour]['weather'] = $analysis['weather'];
 
             if (in_array($analysis['sea']['status'], ['green', 'orange', 'grey']) && in_array($spot['zone'], ['MER', 'MIXTE'])) {
                 $aggregatedSlots[$hour]['MER'][] = ['name' => $spot['name'], 'status' => $analysis['sea']['status']];
@@ -154,7 +104,6 @@ function getAggregatedSlots(array $spotAnalyses): array
         }
     }
 
-    // 2. Group consecutive hours with the same possibilities
     $finalSlots = [];
     $currentSlot = null;
     $sortedHours = array_keys($aggregatedSlots);
@@ -164,8 +113,6 @@ function getAggregatedSlots(array $spotAnalyses): array
         $slotInfo = $aggregatedSlots[$hour];
         $hasAnyZone = isset($slotInfo['MER']) || isset($slotInfo['MARAIS']) || isset($slotInfo['LAC']);
 
-        // Heure sans aucune option nulle part (nuit, orage général...) : on referme le créneau
-        // en cours sans créer de bloc vide, et sans fusionner à tort à travers ce trou.
         if (!$hasAnyZone) {
             if ($currentSlot !== null) {
                 $finalSlots[] = $currentSlot;
@@ -174,7 +121,6 @@ function getAggregatedSlots(array $spotAnalyses): array
             continue;
         }
 
-        // La signature pour fusionner les créneaux ne doit pas inclure la météo détaillée de l'heure
         $signatureInfo = $slotInfo;
         unset($signatureInfo['weather']);
 
@@ -211,24 +157,9 @@ function getAggregatedSlots(array $spotAnalyses): array
     return $finalSlots;
 }
 
-/**
- * Creates a 7-day forecast summary for all spots, including current status for a map.
- *
- * Chaque jour, le statut d'un spot est évalué à SON heure de départ idéale (celle calculée
- * par getIdealDepartureHours(), la même que celle affichée dans le titre de la synthèse) —
- * pas au meilleur moment de la journée toutes zones confondues. Sans ça, un spot pouvait
- * afficher "Nuit" comme raison alors que le créneau idéal du jour est 7h : les deux étaient
- * calculés sur des heures différentes, ce qui n'avait pas de sens pour l'utilisateur.
- *
- * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @param array $idealDepartureHours Result of getIdealDepartureHours().
- * @return array A summary of forecasts for all spots.
- */
 function getSpotsForecastSummary(array $spotAnalyses, array $idealDepartureHours): array
 {
     $spotsForecast = [];
-    // La carte affiche l'heure à venir plutôt que l'heure en cours : l'heure courante est
-    // déjà entamée (jusqu'à 59 min dans le passé), l'heure suivante est plus utile en pratique.
     $upcomingHourKey = (new DateTime())->modify('+1 hour')->format('Y-m-d\TH:00');
 
     foreach ($spotAnalyses as $entry) {
@@ -255,7 +186,6 @@ function getSpotsForecastSummary(array $spotAnalyses, array $idealDepartureHours
             }
         }
 
-        // Get the upcoming-hour status for the map
         $currentStatus = 'red';
         $currentReasons = [];
         if (isset($analysis[$upcomingHourKey])) {
@@ -270,13 +200,6 @@ function getSpotsForecastSummary(array $spotAnalyses, array $idealDepartureHours
     return $spotsForecast;
 }
 
-/**
- * Merges every spot's hourly analysis into a single "best status anywhere" per hour,
- * shared by getDayScores() and getIdealDepartureHours() so both work off the same data.
- *
- * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array [$hourKey => ['status' => ..., 'reasons' => ...]]
- */
 function buildHourlyGlobalStatus(array $spotAnalyses): array
 {
     $hourlyPossible = [];
@@ -297,17 +220,6 @@ function buildHourlyGlobalStatus(array $spotAnalyses): array
     return $hourlyStatus;
 }
 
-/**
- * Computes a 0-5 navigability score per day, en comptant directement les icônes vert/orange/
- * rouge affichées ce jour-là dans la synthèse météorologique (une icône par ligne groupée) et
- * en faisant leur moyenne. Le score est ainsi garanti cohérent avec le tableau : c'est une
- * lecture chiffrée des mêmes icônes, pas un calcul parallèle qui pourrait diverger.
- * Green = 1 point, orange = 0.6, red = 0 ; les lignes sans donnée (grey) ce jour-là sont
- * exclues du calcul plutôt que de fausser la moyenne.
- *
- * @param array $groupedForecasts Result of groupIdenticalForecasts() — les lignes du tableau.
- * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
- */
 function getDayScores(array $groupedForecasts): array
 {
     $scoreWeights = ['green' => 1.0, 'orange' => 0.6, 'red' => 0.0];
@@ -332,15 +244,6 @@ function getDayScores(array $groupedForecasts): array
     return $dayScores;
 }
 
-/**
- * For each of the next 7 days, finds the best hour to head out (first green hour of the
- * day, or the best available status if there's no green), and returns that hour along
- * with a weather snapshot taken at that exact hour — so the 7-day summary shows the
- * conditions that actually matter (the ideal window) instead of an arbitrary fixed time.
- *
- * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array [$dayKey ('Y-m-d') => ['hour' => 'H:i'|null, 'status' => string, 'weather' => array|null]]
- */
 function getIdealDepartureHours(array $spotAnalyses): array
 {
     $hourlyStatus = buildHourlyGlobalStatus($spotAnalyses);
@@ -361,7 +264,7 @@ function getIdealDepartureHours(array $spotAnalyses): array
             if ($status === 'green') {
                 $bestHourKey = $hourKey;
                 $bestStatus = 'green';
-                break; // premier créneau vert de la journée = heure de départ idéale
+                break;
             }
 
             if ($bestHourKey === null || statusRank($status) > statusRank($bestStatus)) {
@@ -390,16 +293,6 @@ function getIdealDepartureHours(array $spotAnalyses): array
     return $ideal;
 }
 
-/**
- * Groups spots that share the exact same 7-day forecast (status + reasons for every day)
- * into a single row, so the summary table doesn't repeat identical lines for spots that
- * behave the same way all week. Le regroupement ignore volontairement le détail météo
- * (identique pour tous les spots d'un même secteur de toute façon) : seuls le statut et
- * les raisons comptent, la météo affichée pour le groupe vient du premier spot rencontré.
- *
- * @param array $spotsForecast Result of getSpotsForecastSummary().
- * @return array List of ['spots' => [spot, ...], 'daily_status' => [...]].
- */
 function groupIdenticalForecasts(array $spotsForecast): array
 {
     $groups = [];
@@ -421,13 +314,6 @@ function groupIdenticalForecasts(array $spotsForecast): array
     return array_values($groups);
 }
 
-/**
- * Récupère un aperçu météo "maintenant" (heure en cours, pas l'heure à venir utilisée pour
- * la carte de sécurité) : température, vent, UV, marée... pour le bloc de présentation.
- *
- * @param array $spotAnalyses Result of computeSpotAnalyses().
- * @return array|null
- */
 function getCurrentWeatherSnapshot(array $spotAnalyses): ?array
 {
     $currentHourKey = (new DateTime())->format('Y-m-d\TH:00');
