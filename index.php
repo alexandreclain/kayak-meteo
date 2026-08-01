@@ -18,6 +18,41 @@ $siteUrl = 'https://kayak.weclain.com/';
 $siteName = 'Kayak Météo Olonne';
 $pageTitle = "$siteName — by weclain.com";
 $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables d'Olonne. Vent, houle et marée analysés heure par heure pour la mer, le marais et le lac de Tanchet.";
+
+$faqItems = [
+    [
+        'question' => 'Comment savoir si les conditions sont bonnes pour faire du kayak aujourd\'hui ?',
+        'answer' => 'Regarde le score du jour dans « Créneaux favorables » : vert veut dire qu\'un créneau sans risque existe, orange qu\'il faut rester prudent, rouge qu\'il vaut mieux reporter. Chaque statut est calculé heure par heure à partir du vent, de la houle et de la marée réels, pas d\'une moyenne vague.',
+    ],
+    [
+        'question' => 'Qu\'est-ce qu\'un « vent de terre » et pourquoi c\'est dangereux ?',
+        'answer' => 'Un vent de terre souffle de la côte vers le large. Il te pousse loin du rivage sans que tu t\'en rendes compte, et te fatigue à contre-courant pour rentrer. Aux Sables d\'Olonne, la côte est orientée sud-ouest : tout vent de secteur nord-est est considéré comme vent de terre dès qu\'il dépasse 8 km/h.',
+    ],
+    [
+        'question' => 'Comment savoir si la marée est montante ou descendante ?',
+        'answer' => 'Chaque créneau et le bloc météo en haut de page affichent le sens de la marée (montante ou descendante) et l\'heure de la prochaine pleine mer, calculés à partir du niveau réel de la mer heure par heure.',
+    ],
+    [
+        'question' => 'Quelle est la différence entre les zones Mer, Marais et Lac ?',
+        'answer' => 'En mer, le vent et la houle commandent. Dans le marais, c\'est la marée : rater la fenêtre de pleine mer, c\'est finir à pied dans la vase. Sur le lac de Tanchet, ni marée ni houle — seul le vent compte, un bon terrain pour débuter.',
+    ],
+    [
+        'question' => 'D\'où viennent les données météo ?',
+        'answer' => 'D\'Open-Meteo (API Marine et prévisions générales), gratuites et mises à jour toutes les heures. En secours, si la houle venait à manquer, Stormglass prend le relais.',
+    ],
+    [
+        'question' => 'Que veut dire l\'icône grise sur un spot ou un jour ?',
+        'answer' => 'Une icône grise signifie que la donnée est indisponible pour cet horaire (panne d\'API, données manquantes) — pas que les conditions sont dangereuses. Vérifie par un autre moyen avant de partir.',
+    ],
+    [
+        'question' => 'C\'est quoi le « créneau idéal » affiché chaque jour ?',
+        'answer' => 'C\'est la meilleure heure pour te mettre à l\'eau ce jour-là, calculée en croisant le vent, la houle et la marée de tous les spots suivis. La météo et le statut de chaque spot affichés dans la synthèse correspondent à cette heure précise.',
+    ],
+    [
+        'question' => 'Est-ce que l\'app fonctionne hors connexion ?',
+        'answer' => 'Oui, en partie : une fois installée sur l\'écran d\'accueil, la dernière version consultée reste accessible sans connexion, même si les données ne se rafraîchissent pas tant que le réseau n\'est pas revenu.',
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -80,29 +115,40 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
         'publisher' => ['@type' => 'Organization', 'name' => 'weclain', 'url' => 'https://weclain.com'],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
     </script>
+    <script type="application/ld+json">
+    <?= json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'FAQPage',
+        'mainEntity' => array_map(fn($item) => [
+            '@type' => 'Question',
+            'name' => $item['question'],
+            'acceptedAnswer' => ['@type' => 'Answer', 'text' => $item['answer']],
+        ], $faqItems),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-900">
 
     <div class="container mx-auto p-4 md:p-6 max-w-5xl">
 
-        <header class="mb-8 text-center">
+        <header class="mb-12 text-center">
             <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-slate-900 flex items-center justify-center gap-2">
                 <img src="apple-touch-icon.png" alt="" width="36" height="36" class="h-9 w-9 rounded-lg shadow-sm">
                 <span><?= htmlspecialchars($siteName) ?></span>
                 <span class="text-xs font-normal text-slate-400 align-middle">by weclain.com</span>
             </h1>
-            <p class="text-slate-500 mt-1">Les meilleurs créneaux pour vos sorties aux Sables d'Olonne</p>
+            <p class="text-slate-500 mt-1">Les meilleurs spots et créneaux pour vos sorties aux Sables d'Olonne</p>
         </header>
 
         <main>
             <section class="mb-12">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[560px]">
-                    <div class="flex flex-col lg:h-full lg:min-h-0">
+                    <div class="flex flex-col lg:h-full lg:min-h-0 lg:order-2">
                         <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Carte des conditions à venir</h2>
                         <p class="text-sm text-slate-500 mb-4">Aperçu pour l'heure qui vient : vent, houle et marée pour chaque spot.</p>
                         <div id="map" class="w-full min-h-[320px] lg:min-h-0 lg:flex-1 rounded-lg border border-slate-200 shadow-sm z-0"></div>
                     </div>
-                    <div class="flex flex-col lg:h-full lg:min-h-0">
+                    <div class="flex flex-col lg:h-full lg:min-h-0 lg:order-1">
                         <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Le kayak météo des Sables d'Olonne</h2>
                         <p class="text-slate-600 leading-relaxed">
                             <strong><?= htmlspecialchars($siteName) ?></strong> analyse en temps réel
@@ -186,29 +232,28 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                     s'estompe : les prévisions à J+1 sont bien plus fiables qu'à J+7.
                 </p>
 
-                <?php if ($todayIdeal && $todayIdeal['weather']): $heroWx = weatherCodeToLabel($todayIdeal['weather']['weather_code'] ?? null); ?>
-                    <div class="flex flex-wrap items-center gap-4 mb-4 text-sm text-slate-600">
-                        <span class="flex items-center gap-1.5"><?= $heroWx['icon'] ?> <?= $heroWx['label'] ?><?php if ($todayIdeal['weather']['air_temperature'] !== null): ?>, <?= round($todayIdeal['weather']['air_temperature']) ?>°C<?php endif; ?></span>
-                        <?php if ($todayIdeal['weather']['wind_speed'] !== null): ?>
-                            <span class="flex items-center gap-1.5">💨 <?= round($todayIdeal['weather']['wind_speed']) ?> km/h</span>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-
                 <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg shadow-sm">
                     <table class="min-w-full text-sm text-left">
                         <thead class="bg-ocean-100">
                             <tr>
-                                <th class="p-3 font-bold text-slate-900">Spot</th>
+                                <th class="p-3 font-bold text-slate-900">Les meilleurs spots</th>
                                 <?php for ($d = 0; $d < 7; $d++): ?>
                                     <?php
                                         $headerDay = (new DateTime())->modify("+$d days");
                                         $headerOpacity = dayFadeOpacity($d);
+                                        $headerWeather = $idealDepartureHours[$headerDay->format('Y-m-d')]['weather'] ?? null;
+                                        $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
                                     ?>
                                     <th class="p-3 text-center font-bold text-slate-900" style="opacity: <?= $headerOpacity ?>">
                                         <?= $dayHeaderFormatter->format($headerDay) ?>
                                         <br>
                                         <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
+                                        <?php if ($headerWeather): ?>
+                                            <div class="mt-1 text-[10px] font-normal text-slate-500 leading-tight space-y-0.5">
+                                                <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
+                                                <?php if ($headerWeather['wind_speed'] !== null): ?><div>💨 <?= round($headerWeather['wind_speed']) ?> km/h</div><?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </th>
                                 <?php endfor; ?>
                             </tr>
@@ -218,7 +263,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                             <tr class="border-b border-slate-200 last:border-0">
                                 <td class="p-3 font-medium text-slate-800">
                                     <?php foreach ($group['spots'] as $i => $spot): ?>
-                                        <?php if ($i > 0): ?><span class="text-slate-300">•</span> <?php endif; ?>
+                                        <?php if ($i > 0): ?><span class="text-slate-200">•</span> <?php endif; ?>
                                         <?php $parts = splitSpotName($spot['name']); ?>
                                         <?= htmlspecialchars($parts['main']) ?><?php if ($parts['detail']): ?> <span class="text-[10px] text-slate-400 opacity-70"><?= htmlspecialchars($parts['detail']) ?></span><?php endif; ?>
                                     <?php endforeach; ?>
@@ -231,7 +276,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                     ?>
                                     <td class="p-3 text-center" style="opacity: <?= $cellOpacity ?>">
                                         <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
-                                            <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover" loading="lazy">
+                                            <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover border-2 border-white shadow-sm" loading="lazy">
                                         </button>
                                     </td>
                                 <?php endforeach; ?>
@@ -271,7 +316,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                             <details class="group bg-white border border-slate-200 rounded-lg shadow-sm" <?= $isFirstDayAccordion ? 'open' : '' ?>>
                                 <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <img src="assets/<?= dayScoreIconFile($dayScore) ?>" alt="" width="24" height="24" class="h-6 w-6 rounded-full object-cover shrink-0">
+                                        <img src="assets/<?= dayScoreIconFile($dayScore) ?>" alt="" width="24" height="24" class="h-6 w-6 rounded-full object-cover border-2 border-white shadow-sm shrink-0">
                                         <span class="font-heading font-bold text-lg text-slate-900 truncate"><?= ucfirst($dateFormatter->format($dayDate)) ?></span>
                                         <?php if ($isDayIndicative): ?>
                                             <span class="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-full shrink-0">Indicatif</span>
@@ -307,7 +352,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                                                         };
                                                                         $spotName = trim(preg_replace('/\s?\(.*\)/', '', $spot['name']));
                                                                     ?>
-                                                                    <?php if ($i > 0): ?><span class="text-slate-300">•</span><?php endif; ?>
+                                                                    <?php if ($i > 0): ?><span class="text-slate-200">•</span><?php endif; ?>
                                                                     <span class="<?= $color ?>"><?= htmlspecialchars($spotName) ?></span>
                                                                 <?php endforeach; ?>
                                                             </div>
@@ -322,19 +367,33 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                                 $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
                                                 $showTide = !empty($slot['details']['MARAIS']) && ($weather['tide_direction'] ?? null) !== null;
                                             ?>
-                                                <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-600 text-left">
+                                                    <!-- Ligne 1 : météo, UV, eau, (case vide) -->
                                                     <div class="flex items-center gap-1.5" title="Conditions générales">
                                                         <span><?= $wx['icon'] ?></span>
                                                         <span><?= $wx['label'] ?></span>
                                                     </div>
-                                                    <div class="flex items-center gap-1.5" title="Vent moyen (rafales)">
+                                                    <?php if ($weather['uv_index'] !== null): ?>
+                                                    <div class="flex items-center gap-1.5" title="Indice UV">
+                                                        <span>☀️</span>
+                                                        <span>UV <?= round($weather['uv_index'], 1) ?></span>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <?php if ($weather['water_temperature'] !== null): ?>
+                                                    <div class="flex items-center gap-1.5" title="Température de l'eau">
+                                                        <span>🌊</span>
+                                                        <span><?= round($weather['water_temperature']) ?>°C</span>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <div class="hidden sm:block" aria-hidden="true"></div>
+
+                                                    <!-- Ligne 2 : vent (+ direction), houle, température de l'air -->
+                                                    <div class="flex items-center gap-1.5" title="Vent moyen (rafales) et direction">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                                                         <span>
                                                             <?= round($weather['wind_speed']) ?> km/h<?php if ($weather['wind_gusts'] !== null): ?> <span class="text-slate-400">(raf. <?= round($weather['wind_gusts']) ?>)</span><?php endif; ?>
                                                         </span>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5" title="Direction du vent">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(<?= $weather['wind_direction'] ?>deg);"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(<?= $weather['wind_direction'] ?>deg);"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>
                                                         <span><?= $weather['wind_direction'] ?>°</span>
                                                     </div>
                                                     <?php if ($weather['swell_height'] !== null): ?>
@@ -349,20 +408,9 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                                         <span><?= round($weather['air_temperature']) ?>°C</span>
                                                     </div>
                                                     <?php endif; ?>
-                                                    <?php if ($weather['uv_index'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Indice UV">
-                                                        <span>☀️</span>
-                                                        <span>UV <?= round($weather['uv_index'], 1) ?></span>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    <?php if ($weather['water_temperature'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Température de l'eau">
-                                                        <span>🌊</span>
-                                                        <span><?= round($weather['water_temperature']) ?>°C</span>
-                                                    </div>
-                                                    <?php endif; ?>
+
                                                     <?php if ($showTide): ?>
-                                                    <div class="col-span-2 sm:col-span-3 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
+                                                    <div class="col-span-2 sm:col-span-4 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
                                                         <span><?= $weather['tide_direction'] === 'montante' ? '⬆️' : ($weather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
                                                         <span>
                                                             Marée <?= $weather['tide_direction'] ?>
@@ -436,23 +484,53 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                     <?= count($spots) ?> points de mise à l'eau suivis autour des Sables d'Olonne, de Brem-sur-Mer et de
                     Talmont-Saint-Hilaire, classés par secteur géographique.
                 </p>
+                <?php
+                    $sectorImages = [
+                        'sables_coast' => ['src' => 'assets/cote.jpg', 'alt' => 'La côte des Sables d\'Olonne'],
+                        'talmont_estuary' => ['src' => 'assets/estuaire.jpg', 'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire'],
+                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et Olonne-sur-Mer'],
+                        'ile_olonne_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais au nord de L\'Île-d\'Olonne'],
+                    ];
+                ?>
                 <div class="space-y-8">
                     <?php foreach ($sectors as $sectorId => $sector): ?>
                         <?php $sectorSpots = array_values(array_filter($spots, fn($spot) => $spot['sector'] === $sectorId)); ?>
                         <?php if (empty($sectorSpots)) continue; ?>
-                        <div>
-                            <h3 class="font-heading text-lg font-bold text-slate-900"><?= htmlspecialchars($sector['name']) ?></h3>
-                            <p class="text-sm text-slate-600 mt-1 mb-3"><?= htmlspecialchars($sector['description'] ?? '') ?></p>
-                            <ul class="space-y-2 text-sm text-slate-600">
-                                <?php foreach ($sectorSpots as $spot): ?>
-                                    <li>
-                                        <strong class="text-slate-900"><?= htmlspecialchars($spot['name']) ?></strong>
-                                        <span class="text-slate-400">— <?= htmlspecialchars($spot['zone']) ?> —</span>
-                                        <?= htmlspecialchars($spot['rando']) ?>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
+                        <?php $sectorImage = $sectorImages[$sectorId] ?? null; ?>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <?php if ($sectorImage): ?>
+                                <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="w-full h-32 sm:h-auto sm:w-48 object-cover rounded-lg border border-slate-200 shadow-sm shrink-0">
+                            <?php endif; ?>
+                            <div>
+                                <h3 class="font-heading text-lg font-bold text-slate-900"><?= htmlspecialchars($sector['name']) ?></h3>
+                                <p class="text-sm text-slate-600 mt-1 mb-3"><?= htmlspecialchars($sector['description'] ?? '') ?></p>
+                                <ul class="space-y-2 text-sm text-slate-600">
+                                    <?php foreach ($sectorSpots as $spot): ?>
+                                        <li>
+                                            <strong class="text-slate-900"><?= htmlspecialchars($spot['name']) ?></strong>
+                                            <span class="text-slate-400">— <?= htmlspecialchars($spot['zone']) ?> —</span>
+                                            <?= htmlspecialchars($spot['rando']) ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
                         </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+
+            <section class="mt-12 mb-4">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Questions fréquentes</h2>
+                <p class="text-sm text-slate-500 mb-6">Ce que tu dois savoir pour lire les créneaux et sortir en sécurité.</p>
+                <div class="space-y-2">
+                    <?php foreach ($faqItems as $item): ?>
+                        <details class="group bg-white border border-slate-200 rounded-lg shadow-sm">
+                            <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none font-heading font-bold text-slate-900">
+                                <span><?= htmlspecialchars($item['question']) ?></span>
+                                <svg class="h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                            </summary>
+                            <p class="px-4 pb-4 text-sm text-slate-600 leading-relaxed"><?= htmlspecialchars($item['answer']) ?></p>
+                        </details>
                     <?php endforeach; ?>
                 </div>
             </section>

@@ -216,10 +216,17 @@ function getAggregatedSlots(array $spotAnalyses): array
 /**
  * Creates a 7-day forecast summary for all spots, including current status for a map.
  *
+ * Chaque jour, le statut d'un spot est évalué à SON heure de départ idéale (celle calculée
+ * par getIdealDepartureHours(), la même que celle affichée dans le titre de la synthèse) —
+ * pas au meilleur moment de la journée toutes zones confondues. Sans ça, un spot pouvait
+ * afficher "Nuit" comme raison alors que le créneau idéal du jour est 7h : les deux étaient
+ * calculés sur des heures différentes, ce qui n'avait pas de sens pour l'utilisateur.
+ *
  * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @param array $idealDepartureHours Result of getIdealDepartureHours().
  * @return array A summary of forecasts for all spots.
  */
-function getSpotsForecastSummary(array $spotAnalyses): array
+function getSpotsForecastSummary(array $spotAnalyses, array $idealDepartureHours): array
 {
     $spotsForecast = [];
     // La carte affiche l'heure à venir plutôt que l'heure en cours : l'heure courante est
@@ -233,42 +240,17 @@ function getSpotsForecastSummary(array $spotAnalyses): array
 
         for ($d = 0; $d < 7; $d++) {
             $day = (new DateTime())->modify("+$d days");
-            $bestStatusOfDay = 'red';
-            $reasonsForDay = [];
-            $hasAnyHourData = false;
+            $dayKey = $day->format('Y-m-d');
+            $idealHour = $idealDepartureHours[$dayKey]['hour'] ?? null;
+            $hourKey = $idealHour !== null ? ($day->format('Y-m-d\T') . $idealHour) : null;
 
-            // 0-23h : la nuit est déjà marquée rouge par getHourlyAnalysisForSpot() via le
-            // lever/coucher réel du soleil, plus fiable qu'une fenêtre fixe.
-            for ($h = 0; $h < 24; $h++) {
-                $hourKey = $day->format("Y-m-d\T") . sprintf('%02d:00', $h);
-                if (!isset($analysis[$hourKey])) continue;
-                $hasAnyHourData = true;
-
+            if ($hourKey !== null && isset($analysis[$hourKey])) {
                 $possibleAnalyses = getPossibleAnalyses($analysis[$hourKey], $spot['zone']);
-                $hourResult = resolveBestStatus($possibleAnalyses);
-
-                if ($hourResult['status'] === 'green') {
-                    $bestStatusOfDay = 'green';
-                    $reasonsForDay = [];
-                    break; // Found a green slot, day is green, no need to check further for this day
-                } elseif (
-                    statusRank($hourResult['status']) > statusRank($bestStatusOfDay)
-                    || ($hourResult['status'] === $bestStatusOfDay && empty($reasonsForDay))
-                ) {
-                    // Le 2e cas capture la raison la première fois qu'on reste au même rang
-                    // (ex: rouge sur rouge) : sans lui, un jour resté rouge du début à la fin
-                    // affichait une icône rouge sans aucune raison associée.
-                    $bestStatusOfDay = $hourResult['status'];
-                    $reasonsForDay = $hourResult['reasons'];
-                }
+                $result = resolveBestStatus($possibleAnalyses);
+                $daily_statuses[] = ['status' => $result['status'], 'reasons' => $result['reasons']];
+            } else {
+                $daily_statuses[] = ['status' => 'grey', 'reasons' => ['Données indisponibles pour ce jour']];
             }
-
-            if (!$hasAnyHourData) {
-                $bestStatusOfDay = 'grey';
-                $reasonsForDay = ['Données indisponibles pour ce jour'];
-            }
-
-            $daily_statuses[] = ['status' => $bestStatusOfDay, 'reasons' => $reasonsForDay];
         }
 
         // Get the upcoming-hour status for the map

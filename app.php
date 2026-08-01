@@ -15,15 +15,16 @@ $spotAnalyses = computeSpotAnalyses($spots, $sectorWeatherData);
 // 2. Get all aggregated slots (for the accordion)
 $finalSlots = getAggregatedSlots($spotAnalyses);
 
-// 3. Get the 7-day summary for the table and map
-$spotsForecast = getSpotsForecastSummary($spotAnalyses);
+// 3. Get the ideal departure hour per day, with its weather snapshot — everything shown per
+// day in the summary table is anchored to this same hour, for consistency
+$idealDepartureHours = getIdealDepartureHours($spotAnalyses);
+
+// 4. Get the 7-day summary for the table and map
+$spotsForecast = getSpotsForecastSummary($spotAnalyses, $idealDepartureHours);
 $groupedForecasts = groupIdenticalForecasts($spotsForecast);
 
-// 4. Get the 0-10 navigability score per day (for the accordion header)
+// 5. Get the 0-10 navigability score per day (for the accordion header)
 $dayScores = getDayScores($spotAnalyses);
-
-// 5. Get the ideal departure hour per day, with its weather snapshot (for the summary table header)
-$idealDepartureHours = getIdealDepartureHours($spotAnalyses);
 
 // 6. Get the current-hour weather/tide snapshot (for the presentation block)
 $currentWeather = getCurrentWeatherSnapshot($spotAnalyses);
