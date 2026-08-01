@@ -42,24 +42,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!sheet || !backdrop || !titleEl || !contentEl || !closeBtn) return;
 
-    function appendWeatherBlock(weatherItems) {
-        if (!weatherItems || weatherItems.length === 0) return;
+    function appendWeatherBlock(weatherHtml) {
+        if (!weatherHtml) return;
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'flex flex-col gap-2 pt-3 mt-1 border-t border-slate-100';
-
-        weatherItems.forEach(function (item) {
-            const cell = document.createElement('div');
-            cell.className = 'flex items-center gap-1.5 text-xs text-slate-600';
-            cell.title = item.label;
-            cell.innerHTML = '<span>' + item.icon + '</span><span>' + item.value + '</span>';
-            wrapper.appendChild(cell);
-        });
+        wrapper.className = 'pt-3 mt-1 border-t border-slate-100';
+        wrapper.innerHTML = weatherHtml;
 
         contentEl.appendChild(wrapper);
     }
 
-    function openInfoSheet(title, status, reasons, weatherItems) {
+    function openInfoSheet(title, status, reasons, weatherHtml) {
         titleEl.textContent = title;
         contentEl.innerHTML = '';
 
@@ -87,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        appendWeatherBlock(weatherItems);
+        appendWeatherBlock(weatherHtml);
 
         sheet.classList.remove('translate-y-full');
         backdrop.classList.remove('hidden');
@@ -102,8 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const trigger = event.target.closest('.info-trigger');
         if (trigger) {
             const reasons = trigger.dataset.reasons ? JSON.parse(trigger.dataset.reasons) : [];
-            const weatherItems = trigger.dataset.weather ? JSON.parse(trigger.dataset.weather) : [];
-            openInfoSheet(trigger.dataset.title || '', trigger.dataset.status || '', reasons, weatherItems);
+            openInfoSheet(trigger.dataset.title || '', trigger.dataset.status || '', reasons, trigger.dataset.weatherHtml || '');
         }
     });
 
@@ -164,3 +156,92 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', onScroll);
     updateParallax();
 });
+
+// Cales de mise à l'eau et accès canoë-kayak recensés sur OpenStreetMap (API Overpass),
+// affichés en complément des spots suivis par l'app sur la carte Leaflet.
+/**
+ * Récupère les cales de mise à l'eau et accès canoë-kayak OSM pour la zone des Sables-d'Olonne
+ * et les ajoute à la carte Leaflet fournie, avec l'icône assets/blue.jpg.
+ *
+ * @param {L.Map} map Instance Leaflet déjà initialisée.
+ * @returns {Promise<void>}
+ */
+function fetchKayakSpots(map) {
+    const overpassUrl = 'https://overpass-api.de/api/interpreter';
+    const query = `[out:json][timeout:25];
+(
+  node["waterway"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
+  way["waterway"="slipway"](46.4600,-1.8200,46.5400,-1.7000);
+  node["canoe"="yes"](46.4600,-1.8200,46.5400,-1.7000);
+  node["sport"="canoe"](46.4600,-1.8200,46.5400,-1.7000);
+);
+out body;
+>;
+out skel qt;`;
+
+    const kayakSpotIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: '<img src="assets/blue.jpg" style="width:22px;height:22px;border-radius:9999px;border:2px solid white;box-shadow:0 1px 3px rgba(3,105,161,0.5);object-fit:cover;">',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
+
+    return fetch(overpassUrl, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query)
+    })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Réponse Overpass invalide (HTTP ' + response.status + ')');
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            const elements = (data && data.elements) || [];
+            if (elements.length === 0) {
+                console.info('Aucune cale de mise à l\'eau OSM trouvée sur la zone des Sables-d\'Olonne.');
+                return;
+            }
+
+            // Les "way" (cales représentées par une ligne) n'ont pas de lat/lon directe : on la
+            // calcule à partir de leurs nœuds constitutifs, récupérés via "out skel qt" / ">".
+            const nodesById = {};
+            elements.forEach(function (el) {
+                if (el.type === 'node') nodesById[el.id] = el;
+            });
+
+            let addedCount = 0;
+
+            elements.forEach(function (el) {
+                let lat, lon;
+
+                if (el.type === 'node' && el.tags) {
+                    lat = el.lat;
+                    lon = el.lon;
+                } else if (el.type === 'way' && el.tags && Array.isArray(el.nodes)) {
+                    const points = el.nodes.map(function (id) { return nodesById[id]; }).filter(Boolean);
+                    if (points.length === 0) return;
+                    lat = points.reduce(function (sum, p) { return sum + p.lat; }, 0) / points.length;
+                    lon = points.reduce(function (sum, p) { return sum + p.lon; }, 0) / points.length;
+                } else {
+                    return; // nœud sans tags, référencé seulement par un "way" : rien à afficher
+                }
+
+                const tags = el.tags || {};
+                const name = tags.name || 'Cale de mise à l\'eau';
+                const accessType = tags.waterway || tags.canoe || tags.sport || 'Accès kayak';
+                const surface = tags.surface ? '<br>Surface : ' + tags.surface : '';
+
+                L.marker([lat, lon], { icon: kayakSpotIcon })
+                    .addTo(map)
+                    .bindPopup('<b>' + name + '</b><br>Type : ' + accessType + surface);
+
+                addedCount++;
+            });
+
+            console.info(addedCount + ' cale(s)/accès kayak OSM ajouté(s) à la carte.');
+        })
+        .catch(function (error) {
+            console.warn('Impossible de récupérer les cales de mise à l\'eau OSM :', error);
+        });
+}

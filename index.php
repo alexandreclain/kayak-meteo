@@ -228,6 +228,7 @@ $faqItems = [
                                 <img src="assets/kayak.jpg" alt="Sortie kayak aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
                             </div>
                         </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Image par <a href="https://pixabay.com/fr/users/pattirey-3229996/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4814610" target="_blank" rel="noopener" class="underline hover:text-slate-500">PattiRey</a> de <a href="https://pixabay.com/fr//?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4814610" target="_blank" rel="noopener" class="underline hover:text-slate-500">Pixabay</a></p>
                     </div>
                 </div>
             </section>
@@ -248,8 +249,9 @@ $faqItems = [
                 <?php
                     // Largeurs partagées entre la table météo et la table de données : deux vraies
                     // <table> distinctes, alignées via des <col> identiques (table-layout: fixed).
-                    $firstColWidth = 36;
-                    $colWidths = array_merge([$firstColWidth], array_fill(0, 7, (100 - $firstColWidth) / 7));
+                    $dayColWidth = 7;
+                    $firstColWidth = 100 - ($dayColWidth * 7);
+                    $colWidths = array_merge([$firstColWidth], array_fill(0, 7, $dayColWidth));
                 ?>
                 <div class="overflow-x-auto">
                     <div class="min-w-[760px]">
@@ -308,15 +310,17 @@ $faqItems = [
                                                 <?= htmlspecialchars(splitSpotName($spot['name'])['main']) ?>
                                             <?php endforeach; ?>
                                         </td>
+                                        <?php $groupZones = array_unique(array_column($group['spots'], 'zone')); ?>
+                                        <?php $groupShowTide = !empty(array_intersect($groupZones, ['MARAIS', 'MIXTE'])); ?>
                                         <?php foreach ($group['daily_status'] as $d => $daily_status): ?>
                                             <?php
                                                 $cellDay = (new DateTime())->modify("+$d days");
                                                 $cellOpacity = dayFadeOpacity($d);
                                                 $groupTitle = htmlspecialchars(implode(', ', array_map(fn($s) => $s['name'], $group['spots']))) . ' — ' . ucfirst($dateFormatter->format($cellDay));
-                                                $weatherItems = formatWeatherForDisplay($daily_status['weather'] ?? null);
+                                                $weatherHtml = renderWeatherDetailGrid($daily_status['weather'] ?? null, $groupShowTide);
                                             ?>
                                             <td class="p-3 text-center" style="opacity: <?= $cellOpacity ?>">
-                                                <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' data-weather='<?= htmlspecialchars(json_encode($weatherItems), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
+                                                <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' data-weather-html='<?= htmlspecialchars($weatherHtml, ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
                                                     <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover border-2 border-white/70 ring-1 ring-slate-900/10 shadow-md" loading="lazy">
                                                 </button>
                                             </td>
@@ -405,62 +409,10 @@ $faqItems = [
                                                 <?php endforeach; ?>
                                             </div>
 
-                                            <!-- Détails météo -->
-                                            <?php if (isset($slot['weather'])):
-                                                $weather = $slot['weather'];
-                                                $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
-                                                $showTide = !empty($slot['details']['MARAIS']) && ($weather['tide_direction'] ?? null) !== null;
-                                            ?>
-                                                <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 text-left">
-                                                    <!-- Ligne 1 : météo, UV, température de l'air -->
-                                                    <div class="flex items-center gap-1.5" title="Conditions générales">
-                                                        <span><?= $wx['icon'] ?></span>
-                                                        <span><?= $wx['label'] ?></span>
-                                                    </div>
-                                                    <?php if ($weather['uv_index'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Indice UV">
-                                                        <span>☀️</span>
-                                                        <span>UV <?= round($weather['uv_index'], 1) ?></span>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    <?php if ($weather['air_temperature'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Température de l'air">
-                                                        <span>🌡️</span>
-                                                        <span><?= round($weather['air_temperature']) ?>°C</span>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <!-- Ligne 2 : vent (+ direction), houle, température de l'eau (juste sous celle de l'air) -->
-                                                    <div class="flex items-center gap-1.5" title="Vent moyen (rafales) et direction">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                                        <span>
-                                                            <?= round($weather['wind_speed']) ?> km/h<?php if ($weather['wind_gusts'] !== null): ?> <span class="text-slate-400">(raf. <?= round($weather['wind_gusts']) ?>)</span><?php endif; ?>
-                                                        </span>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(<?= $weather['wind_direction'] ?>deg);"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>
-                                                        <span><?= $weather['wind_direction'] ?>°</span>
-                                                    </div>
-                                                    <?php if ($weather['swell_height'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Houle">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2l2-9 2 18 2-9 2 12 2-15 2 10h2"/></svg>
-                                                        <span><?= $weather['swell_height'] ?> m</span>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                    <?php if ($weather['water_temperature'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Température de l'eau">
-                                                        <span>🌊</span>
-                                                        <span><?= round($weather['water_temperature']) ?>°C</span>
-                                                    </div>
-                                                    <?php endif; ?>
-
-                                                    <?php if ($showTide): ?>
-                                                    <div class="col-span-2 sm:col-span-3 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
-                                                        <span><?= tideDirectionIcon($weather['tide_direction']) ?></span>
-                                                        <span>
-                                                            Marée <?= $weather['tide_direction'] ?>
-                                                            <?php if ($weather['tide_next_high']): ?><span class="text-slate-400">· pleine mer <?= $weather['tide_next_high'] ?></span><?php endif; ?>
-                                                        </span>
-                                                    </div>
-                                                    <?php endif; ?>
+                                            <!-- Détails météo : même grille, même ordre que le panneau d'info de la synthèse -->
+                                            <?php if (isset($slot['weather'])): ?>
+                                                <div class="mt-3 pt-3 border-t border-slate-200">
+                                                    <?= renderWeatherDetailGrid($slot['weather'], !empty($slot['details']['MARAIS'])) ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -504,6 +456,7 @@ $faqItems = [
                             <img src="assets/kayak2.jpg" alt="Kayak posé sur les rochers aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
                         </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 !mt-1">Image par <a href="https://pixabay.com/fr/users/reijotelaranta-6656376/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=3190733" target="_blank" rel="noopener" class="underline hover:text-slate-500">Reijo Telaranta</a> de <a href="https://pixabay.com/fr//?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=3190733" target="_blank" rel="noopener" class="underline hover:text-slate-500">Pixabay</a></p>
 
                     <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">La sécurité avant la sortie, pas pendant</h3>
                     <ul class="space-y-1 list-none pl-0">
@@ -528,6 +481,7 @@ $faqItems = [
                             <img src="assets/kaya3.jpg" alt="Kayak au coucher de soleil aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
                         </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 !mt-1">Image par <a href="https://pixabay.com/fr/users/zaimful-2736382/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=2831769" target="_blank" rel="noopener" class="underline hover:text-slate-500">Amy Moore</a> de <a href="https://pixabay.com/fr//?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=2831769" target="_blank" rel="noopener" class="underline hover:text-slate-500">Pixabay</a></p>
                 </div>
             </section>
 
@@ -539,9 +493,27 @@ $faqItems = [
                 </p>
                 <?php
                     $sectorImages = [
-                        'sables_coast' => ['src' => 'assets/cote.jpg', 'alt' => 'La côte des Sables d\'Olonne'],
-                        'talmont_estuary' => ['src' => 'assets/estuaire.jpg', 'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire'],
-                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et L\'Île-d\'Olonne'],
+                        'sables_coast' => [
+                            'src' => 'assets/cote.jpg',
+                            'alt' => 'La côte des Sables d\'Olonne',
+                            'credit_url' => 'https://pixabay.com/fr/users/horizon85-1152401/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3748669',
+                            'credit_name' => 'Horizon85',
+                            'credit_content' => '3748669',
+                        ],
+                        'talmont_estuary' => [
+                            'src' => 'assets/estuaire.jpg',
+                            'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire',
+                            'credit_url' => 'https://pixabay.com/fr/users/jms85-3480538/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=7077531',
+                            'credit_name' => 'Jean-Michel SACHOT',
+                            'credit_content' => '7077531',
+                        ],
+                        'brem_north_marais' => [
+                            'src' => 'assets/maree.jpg',
+                            'alt' => 'Le marais entre Brem-sur-Mer et L\'Île-d\'Olonne',
+                            'credit_url' => 'https://pixabay.com/fr/users/emphyrio-10920769/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=5549537',
+                            'credit_name' => 'Pete',
+                            'credit_content' => '5549537',
+                        ],
                     ];
                     // Les deux secteurs de marais partagent une seule et même photo, qui doit
                     // s'étendre sur la hauteur combinée des deux blocs de texte plutôt que d'être
@@ -557,11 +529,14 @@ $faqItems = [
                         <?php $sectorImage = $sectorImages[$sectorId] ?? null; ?>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <?php if ($sectorImage): ?>
-                                <div class="tape-photo w-full h-40 sm:h-auto sm:w-48 sm:self-stretch shrink-0">
-                                    <span class="tape" aria-hidden="true"></span>
-                                    <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
-                                        <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
+                                <div class="w-full h-44 sm:h-auto sm:w-48 sm:self-stretch shrink-0 flex flex-col gap-1">
+                                    <div class="tape-photo w-full flex-1 min-h-0">
+                                        <span class="tape" aria-hidden="true"></span>
+                                        <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
+                                            <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy">
+                                        </div>
                                     </div>
+                                    <p class="text-[10px] text-slate-400 shrink-0 leading-tight">Image par <a href="<?= htmlspecialchars($sectorImage['credit_url']) ?>" target="_blank" rel="noopener" class="underline hover:text-slate-500"><?= htmlspecialchars($sectorImage['credit_name']) ?></a> de <a href="https://pixabay.com/fr//?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=<?= htmlspecialchars($sectorImage['credit_content']) ?>" target="_blank" rel="noopener" class="underline hover:text-slate-500">Pixabay</a></p>
                                 </div>
                             <?php endif; ?>
                             <div class="flex-1 space-y-6">
@@ -670,6 +645,10 @@ $faqItems = [
                             .addTo(map)
                             .bindPopup(`<b>${spot.name}</b><br>Conditions: ${status}` + (reasons.length > 0 ? `<br><small>Raison: ${reasons.join(', ')}</small>` : ''));
                     });
+
+                    if (typeof fetchKayakSpots === 'function') {
+                        fetchKayakSpots(map);
+                    }
                 }
             });
         </script>

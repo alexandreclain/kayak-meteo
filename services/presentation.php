@@ -95,50 +95,81 @@ function dayFadeOpacity(int $dayIndex): float
 }
 
 /**
- * Met en forme un tableau météo (celui produit par rules.php) en une liste prête à afficher
- * (icône + libellé + valeur), pour le panneau d'info déclenché en JS comme pour d'éventuels
- * autres affichages. Ignore les champs absents plutôt que d'afficher des valeurs vides.
+ * Rend le détail météo complet d'une heure donnée (grille 3 colonnes), utilisé à la fois pour
+ * le détail d'un créneau et pour le panneau d'info de la synthèse : les deux affichent ainsi
+ * exactement les mêmes données, dans le même ordre, avec la même apparence — plus de risque
+ * de divergence entre les deux vues.
  *
- * @param array|null $weather
- * @return array Liste de ['icon' => string, 'label' => string, 'value' => string]
+ * @param array|null $weather Tableau météo produit par rules.php.
+ * @param bool $showTide La marée n'a de sens que si un marais est concerné par ce contexte.
+ * @return string HTML (chaîne vide si $weather est absent).
  */
-function formatWeatherForDisplay(?array $weather): array
+function renderWeatherDetailGrid(?array $weather, bool $showTide): string
 {
     if (!$weather) {
-        return [];
+        return '';
     }
 
-    $items = [];
     $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
-    $items[] = ['icon' => $wx['icon'], 'label' => 'Météo', 'value' => $wx['label']];
 
-    if ($weather['air_temperature'] !== null) {
-        $items[] = ['icon' => '🌡️', 'label' => "Température de l'air", 'value' => round($weather['air_temperature']) . '°C'];
-    }
-    if ($weather['water_temperature'] !== null) {
-        $items[] = ['icon' => '🌊', 'label' => "Température de l'eau", 'value' => round($weather['water_temperature']) . '°C'];
-    }
-    if ($weather['uv_index'] !== null) {
-        $items[] = ['icon' => '☀️', 'label' => 'Indice UV', 'value' => 'UV ' . round($weather['uv_index'], 1)];
-    }
-    if ($weather['wind_speed'] !== null) {
-        $gusts = $weather['wind_gusts'] !== null ? ' (rafales ' . round($weather['wind_gusts']) . ' km/h)' : '';
-        $direction = '';
-        if ($weather['wind_direction'] !== null) {
-            $arrow = '<svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-3.5 w-3.5 align-[-2px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(' . (int) $weather['wind_direction'] . 'deg)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>';
-            $direction = ' — ' . $arrow . ' ' . $weather['wind_direction'] . '°';
-        }
-        $items[] = ['icon' => '💨', 'label' => 'Vent', 'value' => round($weather['wind_speed']) . ' km/h' . $gusts . $direction];
-    }
-    if ($weather['swell_height'] !== null) {
-        $items[] = ['icon' => '🌊', 'label' => 'Houle', 'value' => $weather['swell_height'] . ' m'];
-    }
-    if (($weather['tide_direction'] ?? null) !== null) {
-        $nextHigh = $weather['tide_next_high'] ? ' — pleine mer ' . $weather['tide_next_high'] : '';
-        $items[] = ['icon' => tideDirectionIcon($weather['tide_direction']), 'label' => 'Marée', 'value' => ucfirst($weather['tide_direction']) . $nextHigh];
-    }
+    ob_start(); ?>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 text-left">
+        <!-- Ligne 1 : météo, UV, température de l'air -->
+        <div class="flex items-center gap-1.5" title="Conditions générales">
+            <span><?= $wx['icon'] ?></span>
+            <span><?= $wx['label'] ?></span>
+        </div>
+        <?php if ($weather['uv_index'] !== null): ?>
+        <div class="flex items-center gap-1.5" title="Indice UV">
+            <span>☀️</span>
+            <span>UV <?= round($weather['uv_index'], 1) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ($weather['air_temperature'] !== null): ?>
+        <div class="flex items-center gap-1.5" title="Température de l'air">
+            <span>🌡️</span>
+            <span><?= round($weather['air_temperature']) ?>°C</span>
+        </div>
+        <?php endif; ?>
 
-    return $items;
+        <!-- Ligne 2 : vent (+ direction), houle, température de l'eau (juste sous celle de l'air) -->
+        <?php if ($weather['wind_speed'] !== null): ?>
+        <div class="flex items-center gap-1.5" title="Vent moyen (rafales) et direction">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+            <span>
+                <?= round($weather['wind_speed']) ?> km/h<?php if ($weather['wind_gusts'] !== null): ?> <span class="text-slate-400">(raf. <?= round($weather['wind_gusts']) ?>)</span><?php endif; ?>
+            </span>
+            <?php if ($weather['wind_direction'] !== null): ?>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(<?= (int) $weather['wind_direction'] ?>deg);"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>
+            <span><?= $weather['wind_direction'] ?>°</span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        <?php if ($weather['swell_height'] !== null): ?>
+        <div class="flex items-center gap-1.5" title="Houle">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2l2-9 2 18 2-9 2 12 2-15 2 10h2"/></svg>
+            <span><?= $weather['swell_height'] ?> m</span>
+        </div>
+        <?php endif; ?>
+        <?php if ($weather['water_temperature'] !== null): ?>
+        <div class="flex items-center gap-1.5" title="Température de l'eau">
+            <span>🌊</span>
+            <span><?= round($weather['water_temperature']) ?>°C</span>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($showTide && ($weather['tide_direction'] ?? null) !== null): ?>
+        <div class="col-span-2 sm:col-span-3 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
+            <span><?= tideDirectionIcon($weather['tide_direction']) ?></span>
+            <span>
+                Marée <?= $weather['tide_direction'] ?>
+                <?php if ($weather['tide_next_high']): ?><span class="text-slate-400">· pleine mer <?= $weather['tide_next_high'] ?></span><?php endif; ?>
+            </span>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
 }
 
 /**
