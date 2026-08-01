@@ -298,43 +298,55 @@ function buildHourlyGlobalStatus(array $spotAnalyses): array
 }
 
 /**
- * Computes a 0-5 navigability score per day, based on the best status available across
- * ALL spots combined for each hour (i.e. "is there at least one good place to go").
- * Green hours count fully, orange hours partially, red hours count as zero; hours with
- * missing data are simply excluded from the average rather than penalizing the score.
- * Échelle sur 5 (pas 10) pour rester lisible d'un coup d'œil, avec des seuils de badge
- * volontairement cléments : une journée avec beaucoup de vert doit ressortir verte même
- * si quelques heures orange viennent tirer la moyenne vers le bas.
+ * Computes a 0-5 navigability score per day, à partir de la proportion de spots réellement
+ * favorables à chaque heure (moyenne sur tous les spots, pas juste "existe-t-il un bon spot").
+ * L'heure de départ idéale du jour compte pour 3 dans la moyenne pondérée, les autres heures
+ * pour 1 chacune : le score doit refléter en priorité ce qui se passe au moment où l'utilisateur
+ * partirait réellement, tout en tenant compte du reste de la journée.
+ * Green = 1 point, orange = 0.6, red = 0 ; les spots sans donnée (grey) à une heure donnée
+ * sont exclus du calcul de cette heure plutôt que de fausser la moyenne.
  *
  * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @param array $idealDepartureHours Result of getIdealDepartureHours() — l'heure qui compte x3.
  * @return array [$dayKey ('Y-m-d') => ['score' => int|null, 'counted_hours' => int]]
  */
-function getDayScores(array $spotAnalyses): array
+function getDayScores(array $spotAnalyses, array $idealDepartureHours): array
 {
-    $hourlyStatus = buildHourlyGlobalStatus($spotAnalyses);
     $scoreWeights = ['green' => 1.0, 'orange' => 0.6, 'red' => 0.0];
 
     $dayScores = [];
     for ($d = 0; $d < 7; $d++) {
         $day = (new DateTime())->modify("+$d days");
         $dayKey = $day->format('Y-m-d');
-        $creditSum = 0.0;
-        $countedHours = 0;
+        $idealHour = $idealDepartureHours[$dayKey]['hour'] ?? null;
+        $idealHourKey = $idealHour !== null ? ($day->format('Y-m-d\T') . $idealHour) : null;
+
+        $weightedSum = 0.0;
+        $weightedCount = 0;
 
         for ($h = 0; $h < 24; $h++) {
             $hourKey = $day->format('Y-m-d\T') . sprintf('%02d:00', $h);
-            if (!isset($hourlyStatus[$hourKey])) continue;
 
-            $best = $hourlyStatus[$hourKey];
-            if ($best['status'] === 'grey') continue;
+            $credits = [];
+            foreach ($spotAnalyses as $entry) {
+                $spot = $entry['spot'];
+                if (!isset($entry['analysis'][$hourKey])) continue;
+                $possibleAnalyses = getPossibleAnalyses($entry['analysis'][$hourKey], $spot['zone']);
+                $result = resolveBestStatus($possibleAnalyses);
+                if ($result['status'] === 'grey') continue;
+                $credits[] = $scoreWeights[$result['status']];
+            }
+            if (empty($credits)) continue;
 
-            $countedHours++;
-            $creditSum += $scoreWeights[$best['status']];
+            $hourAverage = array_sum($credits) / count($credits);
+            $weight = ($hourKey === $idealHourKey) ? 3 : 1;
+            $weightedSum += $hourAverage * $weight;
+            $weightedCount += $weight;
         }
 
         $dayScores[$dayKey] = [
-            'score' => $countedHours > 0 ? (int) round(($creditSum / $countedHours) * 5) : null,
-            'counted_hours' => $countedHours,
+            'score' => $weightedCount > 0 ? (int) round(($weightedSum / $weightedCount) * 5) : null,
+            'counted_hours' => $weightedCount,
         ];
     }
 

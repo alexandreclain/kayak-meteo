@@ -222,7 +222,7 @@ $faqItems = [
                             </div>
                         <?php endif; ?>
 
-                        <div class="tape-photo mt-4 w-full h-56 lg:h-auto lg:min-h-0 lg:flex-1">
+                        <div class="tape-photo mt-6 w-full h-52 lg:h-auto lg:min-h-0 lg:flex-1">
                             <span class="tape" aria-hidden="true"></span>
                             <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
                                 <img src="assets/kayak.jpg" alt="Sortie kayak aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
@@ -356,15 +356,13 @@ $faqItems = [
                                 $dayWx = weatherCodeToLabel($idealDepartureHours[$day]['weather']['weather_code'] ?? null);
                             ?>
                             <details class="group bg-white border border-slate-200 rounded-lg shadow-sm" <?= $isFirstDayAccordion ? 'open' : '' ?>>
-                                <summary class="grid grid-cols-3 items-center gap-2 p-4 cursor-pointer select-none list-none">
+                                <summary class="flex items-center justify-between gap-2 p-4 cursor-pointer select-none list-none">
                                     <div class="flex items-center gap-2 min-w-0">
+                                        <span class="text-lg shrink-0" title="<?= htmlspecialchars($dayWx['label']) ?>"><?= $dayWx['icon'] ?></span>
                                         <span class="font-heading font-bold text-lg text-slate-900 truncate"><?= ucfirst($dateFormatter->format($dayDate)) ?></span>
                                         <?php if ($isDayIndicative): ?>
                                             <span class="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-full shrink-0">Indicatif</span>
                                         <?php endif; ?>
-                                    </div>
-                                    <div class="flex items-center justify-center">
-                                        <span class="text-lg" title="<?= htmlspecialchars($dayWx['label']) ?>"><?= $dayWx['icon'] ?></span>
                                     </div>
                                     <div class="flex items-center justify-end gap-2 shrink-0">
                                         <img src="assets/<?= dayScoreIconFile($dayScore) ?>" alt="" width="24" height="24" class="h-6 w-6 rounded-full object-cover border-2 border-white/70 ring-1 ring-slate-900/10 shadow-md shrink-0">
@@ -500,7 +498,7 @@ $faqItems = [
                         seul le vent compte — pas de marée, pas de houle, un terrain idéal pour progresser sans stress.
                     </p>
 
-                    <div class="tape-photo w-full h-64 my-2">
+                    <div class="tape-photo w-full h-56 !mt-6 mb-2">
                         <span class="tape" aria-hidden="true"></span>
                         <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
                             <img src="assets/kayak2.jpg" alt="Kayak posé sur les rochers aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
@@ -524,7 +522,7 @@ $faqItems = [
                         ajuste ton itinéraire vers un spot plus abrité. Si c'est rouge, la mer sera toujours là demain.
                     </p>
 
-                    <div class="tape-photo w-full h-64 my-2">
+                    <div class="tape-photo w-full h-56 !mt-6 mb-2">
                         <span class="tape" aria-hidden="true"></span>
                         <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
                             <img src="assets/kaya3.jpg" alt="Kayak au coucher de soleil aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
@@ -543,36 +541,50 @@ $faqItems = [
                     $sectorImages = [
                         'sables_coast' => ['src' => 'assets/cote.jpg', 'alt' => 'La côte des Sables d\'Olonne'],
                         'talmont_estuary' => ['src' => 'assets/estuaire.jpg', 'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire'],
-                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et Olonne-sur-Mer'],
-                        'ile_olonne_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais au nord de L\'Île-d\'Olonne'],
+                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et L\'Île-d\'Olonne'],
                     ];
+                    // Les deux secteurs de marais partagent une seule et même photo, qui doit
+                    // s'étendre sur la hauteur combinée des deux blocs de texte plutôt que d'être
+                    // dupliquée pour chacun.
+                    $mergedSectorGroups = ['ile_olonne_marais' => 'brem_north_marais'];
                 ?>
                 <div class="space-y-8">
                     <?php foreach ($sectors as $sectorId => $sector): ?>
-                        <?php $sectorSpots = array_values(array_filter($spots, fn($spot) => $spot['sector'] === $sectorId)); ?>
-                        <?php if (empty($sectorSpots)) continue; ?>
+                        <?php if (isset($mergedSectorGroups[$sectorId])) continue; ?>
+                        <?php $groupSectorIds = array_merge([$sectorId], array_keys($mergedSectorGroups, $sectorId)); ?>
+                        <?php $groupHasSpots = count(array_filter($spots, fn($spot) => in_array($spot['sector'], $groupSectorIds))) > 0; ?>
+                        <?php if (!$groupHasSpots) continue; ?>
                         <?php $sectorImage = $sectorImages[$sectorId] ?? null; ?>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <?php if ($sectorImage): ?>
-                                <div class="tape-photo w-full h-40 sm:w-48 shrink-0">
+                                <div class="tape-photo w-full h-40 sm:h-auto sm:w-48 sm:self-stretch shrink-0">
                                     <span class="tape" aria-hidden="true"></span>
                                     <div class="tape-photo-inner rounded-lg border border-slate-200 shadow-sm">
                                         <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
                                     </div>
                                 </div>
                             <?php endif; ?>
-                            <div>
-                                <h3 class="font-heading text-lg font-bold text-slate-900"><?= htmlspecialchars($sector['name']) ?></h3>
-                                <p class="text-sm text-slate-600 mt-1 mb-3"><?= htmlspecialchars($sector['description'] ?? '') ?></p>
-                                <ul class="space-y-2 text-sm text-slate-600">
-                                    <?php foreach ($sectorSpots as $spot): ?>
-                                        <li>
-                                            <strong class="text-slate-900"><?= htmlspecialchars($spot['name']) ?></strong>
-                                            <span class="text-slate-400">— <?= htmlspecialchars($spot['zone']) ?> —</span>
-                                            <?= htmlspecialchars($spot['rando']) ?>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
+                            <div class="flex-1 space-y-6">
+                                <?php foreach ($groupSectorIds as $groupSectorId): ?>
+                                    <?php
+                                        $groupSector = $sectors[$groupSectorId];
+                                        $groupSectorSpots = array_values(array_filter($spots, fn($spot) => $spot['sector'] === $groupSectorId));
+                                    ?>
+                                    <?php if (empty($groupSectorSpots)) continue; ?>
+                                    <div>
+                                        <h3 class="font-heading text-lg font-bold text-slate-900"><?= htmlspecialchars($groupSector['name']) ?></h3>
+                                        <p class="text-sm text-slate-600 mt-1 mb-3"><?= htmlspecialchars($groupSector['description'] ?? '') ?></p>
+                                        <ul class="space-y-2 text-sm text-slate-600">
+                                            <?php foreach ($groupSectorSpots as $spot): ?>
+                                                <li>
+                                                    <strong class="text-slate-900"><?= htmlspecialchars($spot['name']) ?></strong>
+                                                    <span class="text-slate-400">— <?= htmlspecialchars($spot['zone']) ?> —</span>
+                                                    <?= htmlspecialchars($spot['rando']) ?>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

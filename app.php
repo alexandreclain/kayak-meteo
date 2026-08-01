@@ -23,8 +23,8 @@ $idealDepartureHours = getIdealDepartureHours($spotAnalyses);
 $spotsForecast = getSpotsForecastSummary($spotAnalyses, $idealDepartureHours);
 $groupedForecasts = groupIdenticalForecasts($spotsForecast);
 
-// 5. Get the 0-10 navigability score per day (for the accordion header)
-$dayScores = getDayScores($spotAnalyses);
+// 5. Get the 0-5 navigability score per day (for the accordion header)
+$dayScores = getDayScores($spotAnalyses, $idealDepartureHours);
 
 // 6. Get the current-hour weather/tide snapshot (for the presentation block)
 $currentWeather = getCurrentWeatherSnapshot($spotAnalyses);
