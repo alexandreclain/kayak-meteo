@@ -24,7 +24,10 @@ $dayScores = getDayScores($spotAnalyses);
 // 5. Get a representative weather snapshot per day (for the summary table header)
 $dayWeatherSummary = getDayWeatherSummary($spotAnalyses);
 
-// 6. Group slots by day for display
+// 6. Get the current-hour weather/tide snapshot (for the presentation block)
+$currentWeather = getCurrentWeatherSnapshot($spotAnalyses);
+
+// 7. Group slots by day for display
 $slotsByDay = [];
 foreach ($finalSlots as $slot) {
     $day = $slot['start']->format('Y-m-d');
@@ -34,7 +37,7 @@ foreach ($finalSlots as $slot) {
     $slotsByDay[$day][] = $slot;
 }
 
-// 7. Prepare formatter for the view
+// 8. Prepare formatter for the view
 $dateFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE, null, null, 'EEEE d MMMM');
 
 // All variables are now ready for index.php

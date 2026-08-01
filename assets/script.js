@@ -41,13 +41,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!sheet || !backdrop || !titleEl || !contentEl || !closeBtn) return;
 
-    function openInfoSheet(title, reasons) {
+    function openInfoSheet(title, status, reasons) {
         titleEl.textContent = title;
         contentEl.innerHTML = '';
 
-        if (!reasons || reasons.length === 0) {
+        if (status === 'green') {
             const p = document.createElement('p');
             p.textContent = 'Conditions favorables, aucun risque identifié pour ce créneau.';
+            contentEl.appendChild(p);
+        } else if (!reasons || reasons.length === 0) {
+            const p = document.createElement('p');
+            p.textContent = "Aucune information disponible pour ce créneau — vérifiez les conditions par un autre moyen avant de partir.";
             contentEl.appendChild(p);
         } else {
             reasons.forEach(function (reason) {
@@ -78,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const trigger = event.target.closest('.info-trigger');
         if (trigger) {
             const reasons = trigger.dataset.reasons ? JSON.parse(trigger.dataset.reasons) : [];
-            openInfoSheet(trigger.dataset.title || '', reasons);
+            openInfoSheet(trigger.dataset.title || '', trigger.dataset.status || '', reasons);
         }
     });
 

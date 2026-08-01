@@ -235,12 +235,14 @@ function getSpotsForecastSummary(array $spotAnalyses): array
             $day = (new DateTime())->modify("+$d days");
             $bestStatusOfDay = 'red';
             $reasonsForDay = [];
+            $hasAnyHourData = false;
 
             // 0-23h : la nuit est déjà marquée rouge par getHourlyAnalysisForSpot() via le
             // lever/coucher réel du soleil, plus fiable qu'une fenêtre fixe.
             for ($h = 0; $h < 24; $h++) {
                 $hourKey = $day->format("Y-m-d\T") . sprintf('%02d:00', $h);
                 if (!isset($analysis[$hourKey])) continue;
+                $hasAnyHourData = true;
 
                 $possibleAnalyses = getPossibleAnalyses($analysis[$hourKey], $spot['zone']);
                 $hourResult = resolveBestStatus($possibleAnalyses);
@@ -249,11 +251,23 @@ function getSpotsForecastSummary(array $spotAnalyses): array
                     $bestStatusOfDay = 'green';
                     $reasonsForDay = [];
                     break; // Found a green slot, day is green, no need to check further for this day
-                } elseif (statusRank($hourResult['status']) > statusRank($bestStatusOfDay)) {
+                } elseif (
+                    statusRank($hourResult['status']) > statusRank($bestStatusOfDay)
+                    || ($hourResult['status'] === $bestStatusOfDay && empty($reasonsForDay))
+                ) {
+                    // Le 2e cas capture la raison la première fois qu'on reste au même rang
+                    // (ex: rouge sur rouge) : sans lui, un jour resté rouge du début à la fin
+                    // affichait une icône rouge sans aucune raison associée.
                     $bestStatusOfDay = $hourResult['status'];
                     $reasonsForDay = $hourResult['reasons'];
                 }
             }
+
+            if (!$hasAnyHourData) {
+                $bestStatusOfDay = 'grey';
+                $reasonsForDay = ['Données indisponibles pour ce jour'];
+            }
+
             $daily_statuses[] = ['status' => $bestStatusOfDay, 'reasons' => $reasonsForDay];
         }
 
@@ -352,4 +366,24 @@ function getDayWeatherSummary(array $spotAnalyses): array
     }
 
     return $summary;
+}
+
+/**
+ * Récupère un aperçu météo "maintenant" (heure en cours, pas l'heure à venir utilisée pour
+ * la carte de sécurité) : température, vent, UV, marée... pour le bloc de présentation.
+ *
+ * @param array $spotAnalyses Result of computeSpotAnalyses().
+ * @return array|null
+ */
+function getCurrentWeatherSnapshot(array $spotAnalyses): ?array
+{
+    $currentHourKey = (new DateTime())->format('Y-m-d\TH:00');
+
+    foreach ($spotAnalyses as $entry) {
+        if (isset($entry['analysis'][$currentHourKey]['weather'])) {
+            return $entry['analysis'][$currentHourKey]['weather'];
+        }
+    }
+
+    return null;
 }

@@ -95,21 +95,61 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
 
         <main>
             <section class="mb-12">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                    <div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[560px]">
+                    <div class="flex flex-col lg:h-full lg:min-h-0">
                         <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Carte des conditions à venir</h2>
                         <p class="text-sm text-slate-500 mb-4">Aperçu pour l'heure qui vient : vent, houle et marée pour chaque spot.</p>
-                        <div id="map" class="w-full h-[400px] rounded-lg border border-slate-200 shadow-sm z-0"></div>
+                        <div id="map" class="w-full min-h-[320px] lg:min-h-0 lg:flex-1 rounded-lg border border-slate-200 shadow-sm z-0"></div>
                     </div>
-                    <div>
+                    <div class="flex flex-col lg:h-full lg:min-h-0">
                         <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Le kayak météo des Sables d'Olonne</h2>
                         <p class="text-slate-600 leading-relaxed">
-                            <?= htmlspecialchars($siteName) ?> analyse en temps réel le vent, la houle et les marées
+                            <strong><?= htmlspecialchars($siteName) ?></strong> analyse en temps réel
+                            <mark class="bg-yellow-200 px-1 rounded">le vent, la houle et les marées</mark>
                             pour vous indiquer, heure par heure, les meilleurs créneaux pour naviguer en toute
-                            sécurité : en mer, dans le marais ou sur le lac de Tanchet, aux Sables d'Olonne et à
-                            Brem-sur-Mer. Chaque créneau est passé au crible de règles de sécurité claires, avec
-                            les raisons expliquées en un clic.
+                            sécurité : en mer, dans le marais ou sur le <strong>lac de Tanchet</strong>, aux
+                            <strong>Sables d'Olonne</strong> et à Brem-sur-Mer. Chaque créneau est passé au crible
+                            de <strong>règles de sécurité</strong> claires, avec les raisons expliquées en un clic.
                         </p>
+
+                        <?php if ($currentWeather): $cwx = weatherCodeToLabel($currentWeather['weather_code'] ?? null); ?>
+                            <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <span class="text-lg"><?= $cwx['icon'] ?></span>
+                                    <div>
+                                        <div class="font-bold text-slate-900"><?php if ($currentWeather['air_temperature'] !== null): ?><?= round($currentWeather['air_temperature']) ?>°C<?php endif; ?></div>
+                                        <div class="text-xs text-slate-500"><?= $cwx['label'] ?></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                    <div>
+                                        <div class="font-bold text-slate-900"><?= round($currentWeather['wind_speed']) ?> km/h</div>
+                                        <div class="text-xs text-slate-500">Vent</div>
+                                    </div>
+                                </div>
+                                <?php if ($currentWeather['uv_index'] !== null): ?>
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <span class="text-lg">☀️</span>
+                                    <div>
+                                        <div class="font-bold text-slate-900">UV <?= round($currentWeather['uv_index'], 1) ?></div>
+                                        <div class="text-xs text-slate-500">Indice UV</div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                <?php if (($currentWeather['tide_direction'] ?? null) !== null): ?>
+                                <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
+                                    <span class="text-lg"><?= $currentWeather['tide_direction'] === 'montante' ? '⬆️' : ($currentWeather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
+                                    <div>
+                                        <div class="font-bold text-slate-900">Marée <?= $currentWeather['tide_direction'] ?></div>
+                                        <?php if ($currentWeather['tide_next_high']): ?><div class="text-xs text-slate-500">Pleine mer <?= $currentWeather['tide_next_high'] ?></div><?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <img src="assets/kayak.jpg" alt="Sortie kayak aux Sables d'Olonne" class="mt-4 w-full h-56 lg:h-auto lg:min-h-0 lg:flex-1 object-cover rounded-lg border border-slate-200 shadow-sm">
                     </div>
                 </div>
             </section>
@@ -155,7 +195,7 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                                         $cellTitle = htmlspecialchars($forecast['spot']['name']) . ' — ' . ucfirst($dateFormatter->format($cellDay));
                                     ?>
                                     <td class="p-3 text-center <?= $cellIndicative ? 'opacity-60' : '' ?>">
-                                        <button type="button" class="info-trigger" data-title="<?= $cellTitle ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
+                                        <button type="button" class="info-trigger" data-title="<?= $cellTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
                                             <?php if ($daily_status['status'] === 'green'): ?>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto text-status-safe" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <?php elseif ($daily_status['status'] === 'orange'): ?>
@@ -311,6 +351,50 @@ $pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer
                             <?php $isFirstDayAccordion = false; ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                </div>
+            </section>
+
+            <section class="mt-16 bg-white border border-slate-200 rounded-lg shadow-sm p-6 md:p-8">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">La météo classique ne dit rien de vos vraies conditions de mer</h2>
+                <div class="text-slate-600 leading-relaxed space-y-4">
+                    <p>
+                        Tu regardes la météo, tu vois « 15 km/h, ensoleillé », et tu te dis que c'est calme. Mauvais réflexe.
+                        Un vent de 15 km/h de secteur nord-est aux Sables d'Olonne, c'est un <strong>vent de terre</strong> :
+                        <mark class="bg-yellow-200 px-1 rounded">il te pousse vers le large, pas vers la plage</mark>.
+                        La météo classique ne fait pas la différence. <strong><?= htmlspecialchars($siteName) ?></strong>, si.
+                    </p>
+                    <p>
+                        Cette page croise trois données que les applis météo grand public ignorent superbement : le sens du
+                        vent par rapport à la côte, la hauteur de houle heure par heure, et l'état réel de la marée. Résultat :
+                        un statut clair — <strong class="text-status-safe">vert</strong>, <strong class="text-status-warning">orange</strong>,
+                        <strong class="text-status-danger">rouge</strong> — pour chaque spot, et la raison écrite noir sur blanc
+                        si ça coince.
+                    </p>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">Mer, marais, lac : trois terrains, trois règles</h3>
+                    <p>
+                        Tu ne pagaies pas pareil à <strong>Port Olona</strong> qu'à l'<strong>Embarcadère des Salines</strong>.
+                        En mer, la houle et le vent de terre sont tes deux ennemis. Dans le marais, c'est la marée qui commande :
+                        rater la fenêtre de pleine mer, c'est finir à pied dans la vase. Sur le <strong>lac de Tanchet</strong>,
+                        seul le vent compte — pas de marée, pas de houle, un terrain idéal pour progresser sans stress.
+                    </p>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">La sécurité avant la sortie, pas pendant</h3>
+                    <ul class="space-y-1 list-none pl-0">
+                        <li>☐ Vérifie le sens du vent avant de mettre le kayak à l'eau.</li>
+                        <li>☐ Regarde la fenêtre de marée si tu vises le marais ou l'estuaire du Payré.</li>
+                        <li>☐ Ne sors jamais si un orage est annoncé — <mark class="bg-yellow-200 px-1 rounded">la foudre ne pardonne pas sur l'eau</mark>.</li>
+                    </ul>
+                    <p>
+                        Ces trois réflexes, c'est ce que <strong><?= htmlspecialchars($siteName) ?></strong> calcule à ta place,
+                        heure par heure, pour les Sables d'Olonne et Brem-sur-Mer.
+                    </p>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">Consulte, pagaie, reviens</h3>
+                    <p>
+                        Ouvre l'app avant de partir. Regarde le score du jour. Si c'est vert, file à l'eau. Si c'est orange,
+                        ajuste ton itinéraire vers un spot plus abrité. Si c'est rouge, la mer sera toujours là demain.
+                    </p>
                 </div>
             </section>
 

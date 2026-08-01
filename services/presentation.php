@@ -19,6 +19,7 @@ const REASON_DESCRIPTIONS = [
     'Données houle/vent indisponibles' => "Les données de houle ou de vent n'ont pas pu être récupérées pour cet horaire : vérifiez les conditions par un autre moyen avant de partir.",
     'Données marée indisponibles' => "Les horaires de marée n'ont pas pu être calculés pour cet horaire : vérifiez une table de marée officielle avant de partir.",
     'Données vent indisponibles' => "Les données de vent n'ont pas pu être récupérées pour cet horaire : vérifiez les conditions par un autre moyen avant de partir.",
+    'Données indisponibles pour ce jour' => "Aucune donnée exploitable pour cette journée : vérifiez la météo par un autre moyen avant de partir.",
 ];
 
 /**
