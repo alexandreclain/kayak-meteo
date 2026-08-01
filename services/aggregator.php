@@ -222,8 +222,9 @@ function getAggregatedSlots(array $spotAnalyses): array
 function getSpotsForecastSummary(array $spotAnalyses): array
 {
     $spotsForecast = [];
-    $now = new DateTime();
-    $currentHourKey = $now->format('Y-m-d\TH:00');
+    // La carte affiche l'heure à venir plutôt que l'heure en cours : l'heure courante est
+    // déjà entamée (jusqu'à 59 min dans le passé), l'heure suivante est plus utile en pratique.
+    $upcomingHourKey = (new DateTime())->modify('+1 hour')->format('Y-m-d\TH:00');
 
     foreach ($spotAnalyses as $entry) {
         $spot = $entry['spot'];
@@ -256,11 +257,11 @@ function getSpotsForecastSummary(array $spotAnalyses): array
             $daily_statuses[] = ['status' => $bestStatusOfDay, 'reasons' => $reasonsForDay];
         }
 
-        // Get current status for the map
+        // Get the upcoming-hour status for the map
         $currentStatus = 'red';
         $currentReasons = [];
-        if (isset($analysis[$currentHourKey])) {
-            $possibleAnalyses = getPossibleAnalyses($analysis[$currentHourKey], $spot['zone']);
+        if (isset($analysis[$upcomingHourKey])) {
+            $possibleAnalyses = getPossibleAnalyses($analysis[$upcomingHourKey], $spot['zone']);
             $currentResult = resolveBestStatus($possibleAnalyses);
             $currentStatus = $currentResult['status'];
             $currentReasons = $currentResult['reasons'];

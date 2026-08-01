@@ -1,7 +1,7 @@
 {
-    "name": "Kayak Météo — by weclain.com",
-    "short_name": "Kayak Météo",
-    "description": "Créneaux favorables pour le kayak aux Sables d'Olonne, selon le vent, la houle et les marées.",
+    "name": "Kayak Météo Olonne — by weclain.com",
+    "short_name": "Kayak Météo Olonne",
+    "description": "Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables d'Olonne, selon le vent, la houle et les marées.",
     "start_url": "/",
     "scope": "/",
     "icons": [

@@ -4,9 +4,9 @@
 require_once 'app.php';
 
 $zoneDisplay = [
-    'MER'    => ['label' => 'Mer',    'text' => 'text-ocean-brand', 'border' => 'border-sky-200'],
-    'MARAIS' => ['label' => 'Marais', 'text' => 'text-teal-600',    'border' => 'border-teal-200'],
-    'LAC'    => ['label' => 'Lac',    'text' => 'text-violet-600',  'border' => 'border-violet-200'],
+    'MER'    => ['label' => 'Mer'],
+    'MARAIS' => ['label' => 'Marais'],
+    'LAC'    => ['label' => 'Lac'],
 ];
 
 $dayHeaderFormatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE, null, null, 'EEE');
@@ -14,8 +14,9 @@ $indicativeCutoff = (new DateTime())->modify('+' . RELIABLE_FORECAST_DAYS . ' da
 $isFirstDayAccordion = true;
 
 $siteUrl = 'https://kayak.weclain.com/';
-$pageTitle = 'Kayak Météo — by weclain.com';
-$pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : vent, houle et marée analysés en temps réel pour la mer, le marais et le lac de Tanchet.";
+$siteName = 'Kayak Météo Olonne';
+$pageTitle = "$siteName — by weclain.com";
+$pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables d'Olonne. Vent, houle et marée analysés heure par heure pour la mer, le marais et le lac de Tanchet.";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -47,7 +48,7 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
     <meta name="theme-color" content="#0369A1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Kayak Météo">
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($siteName) ?>">
 
     <!-- Polices -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,21 +61,17 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-    <!-- CSS externe -->
-    <link rel="stylesheet" href="assets/style.css">
+    <!-- CSS externe (cache-busting automatique basé sur la date de modification) -->
+    <link rel="stylesheet" href="assets/style.css?v=<?= @filemtime(__DIR__ . '/assets/style.css') ?: '1' ?>">
     <!-- JS externe -->
-    <script src="assets/script.js" defer></script>
-    <style>
-        /* Hauteur pour la carte Leaflet */
-        #map { height: 400px; }
-    </style>
+    <script src="assets/script.js?v=<?= @filemtime(__DIR__ . '/assets/script.js') ?: '1' ?>" defer></script>
 
     <!-- Données structurées (SEO) -->
     <script type="application/ld+json">
     <?= json_encode([
         '@context' => 'https://schema.org',
         '@type' => 'WebApplication',
-        'name' => 'Kayak Météo',
+        'name' => $siteName,
         'url' => $siteUrl,
         'description' => $pageDescription,
         'applicationCategory' => 'WeatherApplication',
@@ -85,23 +82,41 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
 </head>
 <body class="bg-slate-50 text-slate-900">
 
-    <div class="container mx-auto p-4 md:p-6 max-w-4xl">
+    <div class="container mx-auto p-4 md:p-6 max-w-5xl">
 
         <header class="mb-8 text-center">
-            <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-slate-900">
-                Kayak Météo <span class="text-xs font-normal text-slate-400 align-middle">by weclain.com</span>
+            <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-slate-900 flex items-center justify-center gap-2">
+                <img src="apple-touch-icon.png" alt="" width="36" height="36" class="h-9 w-9 rounded-lg shadow-sm">
+                <span><?= htmlspecialchars($siteName) ?></span>
+                <span class="text-xs font-normal text-slate-400 align-middle">by weclain.com</span>
             </h1>
             <p class="text-slate-500 mt-1">Les meilleurs créneaux pour vos sorties aux Sables d'Olonne</p>
         </header>
 
         <main>
             <section class="mb-12">
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Carte des conditions actuelles</h2>
-                <div id="map" class="w-full rounded-lg border border-slate-200 shadow-sm z-0"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    <div>
+                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Carte des conditions à venir</h2>
+                        <p class="text-sm text-slate-500 mb-4">Aperçu pour l'heure qui vient : vent, houle et marée pour chaque spot.</p>
+                        <div id="map" class="w-full h-[400px] rounded-lg border border-slate-200 shadow-sm z-0"></div>
+                    </div>
+                    <div>
+                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Le kayak météo des Sables d'Olonne</h2>
+                        <p class="text-slate-600 leading-relaxed">
+                            <?= htmlspecialchars($siteName) ?> analyse en temps réel le vent, la houle et les marées
+                            pour vous indiquer, heure par heure, les meilleurs créneaux pour naviguer en toute
+                            sécurité : en mer, dans le marais ou sur le lac de Tanchet, aux Sables d'Olonne et à
+                            Brem-sur-Mer. Chaque créneau est passé au crible de règles de sécurité claires, avec
+                            les raisons expliquées en un clic.
+                        </p>
+                    </div>
+                </div>
             </section>
 
             <section class="mb-12">
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Synthèse des 7 prochains jours</h2>
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Synthèse des 7 prochains jours</h2>
+                <p class="text-sm text-slate-500 mb-4">Un coup d'œil sur la semaine pour planifier vos sorties à l'avance.</p>
                 <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg shadow-sm">
                     <table class="min-w-full text-sm text-left">
                         <thead class="bg-ocean-100">
@@ -162,7 +177,8 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
             </section>
 
             <section>
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-4">Créneaux favorables</h2>
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Créneaux favorables</h2>
+                <p class="text-sm text-slate-500 mb-4">Ouvrez un jour pour voir le détail heure par heure et savoir où pagayer.</p>
                 <div class="space-y-3">
                     <?php if (empty($slotsByDay)): ?>
                         <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm text-center text-slate-600">
@@ -212,9 +228,9 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
                                                 <?php foreach ($zoneDisplay as $zone => $meta): ?>
                                                     <?php if (!empty($slot['details'][$zone])): ?>
                                                         <div class="flex items-start gap-2 text-sm">
-                                                            <span class="shrink-0 w-14 font-bold <?= $meta['text'] ?>"><?= $meta['label'] ?></span>
-                                                            <div class="flex flex-wrap gap-x-3 gap-y-1">
-                                                                <?php foreach ($slot['details'][$zone] as $spot): ?>
+                                                            <span class="shrink-0 w-14 font-bold text-slate-900"><?= $meta['label'] ?></span>
+                                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                                <?php foreach ($slot['details'][$zone] as $i => $spot): ?>
                                                                     <?php
                                                                         $color = match ($spot['status']) {
                                                                             'green' => 'text-status-safe font-medium',
@@ -223,6 +239,7 @@ $pageDescription = "Créneaux favorables pour le kayak aux Sables d'Olonne : ven
                                                                         };
                                                                         $spotName = trim(preg_replace('/\s?\(.*\)/', '', $spot['name']));
                                                                     ?>
+                                                                    <?php if ($i > 0): ?><span class="text-slate-300">•</span><?php endif; ?>
                                                                     <span class="<?= $color ?>"><?= htmlspecialchars($spotName) ?></span>
                                                                 <?php endforeach; ?>
                                                             </div>

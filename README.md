@@ -1,6 +1,6 @@
-# Kayak Météo
+# Kayak Météo Olonne
 
-Application PHP qui identifie les créneaux favorables pour faire du kayak aux Sables d'Olonne (mer, marais, lac), à partir de la météo, de la houle et des marées.
+Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables d'Olonne. Vent, houle et marée analysés heure par heure pour la mer, le marais et le lac de Tanchet.
 
 ## Fonctionnement
 

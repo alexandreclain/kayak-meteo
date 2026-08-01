@@ -1,5 +1,9 @@
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #F8FAFC;
+    /* Motif de vagues très léger pour casser le blanc, sans nuire à la lisibilité */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='48' viewBox='0 0 140 48'%3E%3Cpath d='M0 24 Q 17.5 8 35 24 T 70 24 T 105 24 T 140 24' fill='none' stroke='%230369A1' stroke-opacity='0.05' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: repeat;
 }
 
 /* Icônes cliquables de la synthèse : neutralise le style natif de <button> */
