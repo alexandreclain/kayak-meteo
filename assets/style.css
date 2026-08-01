@@ -1,3 +1,7 @@
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: #F8FAFC;
@@ -27,3 +31,33 @@ summary {
 summary::-webkit-details-marker {
     display: none;
 }
+
+/* Effet de parallaxe léger sur les photos (assets/script.js pilote --parallax-offset) */
+.parallax-img {
+    transform: translateY(var(--parallax-offset, 0px)) scale(1.15);
+    transition: transform 0.05s linear;
+    will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+    .parallax-img {
+        transform: none;
+    }
+}
+
+/* "Scotch" décoratif façon photo de vacances, posé en haut de chaque image du site */
+.tape {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 88px;
+    height: 30px;
+    z-index: 10;
+    opacity: 0.85;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.3) 0 6px, transparent 6px 12px);
+}
+.tape-yellow { background-color: #FDE68A; transform: translateX(-50%) rotate(-4deg); }
+.tape-pink   { background-color: #FBCFE8; transform: translateX(-50%) rotate(3deg); }
+.tape-blue   { background-color: #BAE6FD; transform: translateX(-50%) rotate(-2deg); }
+.tape-mint   { background-color: #A7F3D0; transform: translateX(-50%) rotate(4deg); }
+.tape-coral  { background-color: #FECACA; transform: translateX(-50%) rotate(-3deg); }

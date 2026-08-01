@@ -135,7 +135,6 @@ function getAggregatedSlots(array $spotAnalyses): array
 {
     $aggregatedSlots = [];
     $now = new DateTime();
-    $indicativeCutoff = (new DateTime())->modify('+' . RELIABLE_FORECAST_DAYS . ' days');
 
     // 1. Merge every spot's hourly analysis into per-hour zone buckets
     foreach ($spotAnalyses as $entry) {
@@ -201,7 +200,6 @@ function getAggregatedSlots(array $spotAnalyses): array
                 'end' => (clone $time)->modify('+1 hour'),
                 'details' => $slotInfo,
                 'signature' => $slotSignature,
-                'indicative' => $time > $indicativeCutoff,
                 'weather' => $aggregatedSlots[$hour]['weather'] ?? null,
             ];
         } else {
@@ -247,9 +245,13 @@ function getSpotsForecastSummary(array $spotAnalyses, array $idealDepartureHours
             if ($hourKey !== null && isset($analysis[$hourKey])) {
                 $possibleAnalyses = getPossibleAnalyses($analysis[$hourKey], $spot['zone']);
                 $result = resolveBestStatus($possibleAnalyses);
-                $daily_statuses[] = ['status' => $result['status'], 'reasons' => $result['reasons']];
+                $daily_statuses[] = [
+                    'status' => $result['status'],
+                    'reasons' => $result['reasons'],
+                    'weather' => $analysis[$hourKey]['weather'] ?? null,
+                ];
             } else {
-                $daily_statuses[] = ['status' => 'grey', 'reasons' => ['Données indisponibles pour ce jour']];
+                $daily_statuses[] = ['status' => 'grey', 'reasons' => ['Données indisponibles pour ce jour'], 'weather' => null];
             }
         }
 
@@ -397,7 +399,9 @@ function getIdealDepartureHours(array $spotAnalyses): array
 /**
  * Groups spots that share the exact same 7-day forecast (status + reasons for every day)
  * into a single row, so the summary table doesn't repeat identical lines for spots that
- * behave the same way all week.
+ * behave the same way all week. Le regroupement ignore volontairement le détail météo
+ * (identique pour tous les spots d'un même secteur de toute façon) : seuls le statut et
+ * les raisons comptent, la météo affichée pour le groupe vient du premier spot rencontré.
  *
  * @param array $spotsForecast Result of getSpotsForecastSummary().
  * @return array List of ['spots' => [spot, ...], 'daily_status' => [...]].
@@ -406,7 +410,12 @@ function groupIdenticalForecasts(array $spotsForecast): array
 {
     $groups = [];
     foreach ($spotsForecast as $forecast) {
-        $signature = json_encode($forecast['daily_status']);
+        $signatureBasis = array_map(
+            fn($day) => ['status' => $day['status'], 'reasons' => $day['reasons']],
+            $forecast['daily_status']
+        );
+        $signature = json_encode($signatureBasis);
+
         if (!isset($groups[$signature])) {
             $groups[$signature] = [
                 'spots' => [],

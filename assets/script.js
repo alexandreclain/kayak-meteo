@@ -31,7 +31,8 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Panneau d'info : ouvre au clic/tap sur une icône de statut, avec le détail des raisons.
+// Panneau d'info : ouvre au clic/tap sur une icône de statut, avec le détail des raisons
+// et, quand disponible, le détail météo complet de ce créneau.
 document.addEventListener('DOMContentLoaded', function () {
     const sheet = document.getElementById('info-sheet');
     const backdrop = document.getElementById('info-sheet-backdrop');
@@ -41,7 +42,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!sheet || !backdrop || !titleEl || !contentEl || !closeBtn) return;
 
-    function openInfoSheet(title, status, reasons) {
+    function appendWeatherBlock(weatherItems) {
+        if (!weatherItems || weatherItems.length === 0) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'grid grid-cols-2 gap-2 pt-3 mt-1 border-t border-slate-100';
+
+        weatherItems.forEach(function (item) {
+            const cell = document.createElement('div');
+            cell.className = 'flex items-center gap-1.5 text-xs text-slate-600';
+            cell.title = item.label;
+            cell.innerHTML = '<span>' + item.icon + '</span><span>' + item.value + '</span>';
+            wrapper.appendChild(cell);
+        });
+
+        contentEl.appendChild(wrapper);
+    }
+
+    function openInfoSheet(title, status, reasons, weatherItems) {
         titleEl.textContent = title;
         contentEl.innerHTML = '';
 
@@ -69,6 +87,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        appendWeatherBlock(weatherItems);
+
         sheet.classList.remove('translate-y-full');
         backdrop.classList.remove('hidden');
     }
@@ -82,10 +102,65 @@ document.addEventListener('DOMContentLoaded', function () {
         const trigger = event.target.closest('.info-trigger');
         if (trigger) {
             const reasons = trigger.dataset.reasons ? JSON.parse(trigger.dataset.reasons) : [];
-            openInfoSheet(trigger.dataset.title || '', trigger.dataset.status || '', reasons);
+            const weatherItems = trigger.dataset.weather ? JSON.parse(trigger.dataset.weather) : [];
+            openInfoSheet(trigger.dataset.title || '', trigger.dataset.status || '', reasons, weatherItems);
         }
     });
 
     closeBtn.addEventListener('click', closeInfoSheet);
     backdrop.addEventListener('click', closeInfoSheet);
+});
+
+// Bouton "retour en haut" : apparaît après un peu de défilement, scroll fluide au clic.
+document.addEventListener('DOMContentLoaded', function () {
+    const backToTop = document.getElementById('back-to-top');
+    if (!backToTop) return;
+
+    function toggleBackToTop() {
+        const show = window.scrollY > 480;
+        backToTop.classList.toggle('hidden', !show);
+        backToTop.classList.toggle('flex', show);
+    }
+
+    window.addEventListener('scroll', toggleBackToTop, { passive: true });
+    toggleBackToTop();
+
+    backToTop.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+});
+
+// Effet de parallaxe léger sur les photos du site : chaque image glisse doucement selon sa
+// position à l'écran pendant le défilement. Désactivé si l'utilisateur préfère moins de mouvement.
+document.addEventListener('DOMContentLoaded', function () {
+    const images = document.querySelectorAll('.parallax-img');
+    if (!images.length) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let ticking = false;
+
+    function updateParallax() {
+        const viewportHeight = window.innerHeight;
+
+        images.forEach(function (img) {
+            const rect = img.getBoundingClientRect();
+            const center = rect.top + rect.height / 2;
+            const progress = (center - viewportHeight / 2) / (viewportHeight / 2 + rect.height / 2);
+            const offset = Math.max(-1, Math.min(1, progress)) * 22;
+            img.style.setProperty('--parallax-offset', offset.toFixed(1) + 'px');
+        });
+
+        ticking = false;
+    }
+
+    function onScroll() {
+        if (!ticking) {
+            window.requestAnimationFrame(updateParallax);
+            ticking = true;
+        }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    updateParallax();
 });

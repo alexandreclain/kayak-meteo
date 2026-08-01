@@ -23,14 +23,6 @@ const REASON_DESCRIPTIONS = [
 ];
 
 /**
- * Retourne l'explication associée à une raison, ou un texte générique si elle est inconnue.
- */
-function describeReason(string $reason): string
-{
-    return REASON_DESCRIPTIONS[$reason] ?? "Condition à vérifier sur place avant de partir.";
-}
-
-/**
  * Classes Tailwind pour le badge de score /10 d'un jour, selon sa navigabilité.
  *
  * @param int|null $score
@@ -100,6 +92,64 @@ function splitSpotName(string $name): array
 function dayFadeOpacity(int $dayIndex): float
 {
     return max(0.55, round(1 - ($dayIndex * 0.075), 2));
+}
+
+/**
+ * Met en forme un tableau météo (celui produit par rules.php) en une liste prête à afficher
+ * (icône + libellé + valeur), pour le panneau d'info déclenché en JS comme pour d'éventuels
+ * autres affichages. Ignore les champs absents plutôt que d'afficher des valeurs vides.
+ *
+ * @param array|null $weather
+ * @return array Liste de ['icon' => string, 'label' => string, 'value' => string]
+ */
+function formatWeatherForDisplay(?array $weather): array
+{
+    if (!$weather) {
+        return [];
+    }
+
+    $items = [];
+    $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
+    $items[] = ['icon' => $wx['icon'], 'label' => 'Météo', 'value' => $wx['label']];
+
+    if ($weather['air_temperature'] !== null) {
+        $items[] = ['icon' => '🌡️', 'label' => "Température de l'air", 'value' => round($weather['air_temperature']) . '°C'];
+    }
+    if ($weather['uv_index'] !== null) {
+        $items[] = ['icon' => '☀️', 'label' => 'Indice UV', 'value' => 'UV ' . round($weather['uv_index'], 1)];
+    }
+    if ($weather['wind_speed'] !== null) {
+        $gusts = $weather['wind_gusts'] !== null ? ' (rafales ' . round($weather['wind_gusts']) . ' km/h)' : '';
+        $direction = $weather['wind_direction'] !== null ? ' — ' . $weather['wind_direction'] . '°' : '';
+        $items[] = ['icon' => '💨', 'label' => 'Vent', 'value' => round($weather['wind_speed']) . ' km/h' . $gusts . $direction];
+    }
+    if ($weather['swell_height'] !== null) {
+        $items[] = ['icon' => '🌊', 'label' => 'Houle', 'value' => $weather['swell_height'] . ' m'];
+    }
+    if ($weather['water_temperature'] !== null) {
+        $items[] = ['icon' => '🌊', 'label' => "Température de l'eau", 'value' => round($weather['water_temperature']) . '°C'];
+    }
+    if (($weather['tide_direction'] ?? null) !== null) {
+        $nextHigh = $weather['tide_next_high'] ? ' — pleine mer ' . $weather['tide_next_high'] : '';
+        $items[] = ['icon' => tideDirectionIcon($weather['tide_direction']), 'label' => 'Marée', 'value' => ucfirst($weather['tide_direction']) . $nextHigh];
+    }
+
+    return $items;
+}
+
+/**
+ * Icône représentant le sens de la marée.
+ *
+ * @param string|null $direction 'montante', 'descendante', 'étale' ou null.
+ * @return string
+ */
+function tideDirectionIcon(?string $direction): string
+{
+    return match ($direction) {
+        'montante' => '⬆️',
+        'descendante' => '⬇️',
+        default => '➡️',
+    };
 }
 
 /**

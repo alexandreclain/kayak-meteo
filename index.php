@@ -16,8 +16,8 @@ $todayIdeal = $idealDepartureHours[(new DateTime())->format('Y-m-d')] ?? null;
 
 $siteUrl = 'https://kayak.weclain.com/';
 $siteName = 'Kayak Météo Olonne';
-$pageTitle = "$siteName — by weclain.com";
-$pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables d'Olonne. Vent, houle et marée analysés heure par heure pour la mer, le marais et le lac de Tanchet.";
+$pageTitle = "Kayak Météo Olonne — créneaux, marée et vent aux Sables-d'Olonne | weclain.com";
+$pageDescription = "Kayak Météo Olonne : les meilleurs créneaux pour naviguer aux Sables-d'Olonne. Vent, houle et marée analysés heure par heure pour la mer, le marais et le lac de Tanchet.";
 
 $faqItems = [
     [
@@ -131,25 +131,33 @@ $faqItems = [
 
     <div class="container mx-auto p-4 md:p-6 max-w-5xl">
 
-        <header class="mb-12 text-center">
+        <header class="mb-8 text-center">
             <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-slate-900 flex items-center justify-center gap-2">
                 <img src="apple-touch-icon.png" alt="" width="36" height="36" class="h-9 w-9 rounded-lg shadow-sm">
                 <span><?= htmlspecialchars($siteName) ?></span>
-                <span class="text-xs font-normal text-slate-400 align-middle">by weclain.com</span>
             </h1>
             <p class="text-slate-500 mt-1">Les meilleurs spots et créneaux pour vos sorties aux Sables d'Olonne</p>
         </header>
+
+        <nav aria-label="Sommaire" class="mb-12">
+            <ul class="flex flex-wrap justify-center gap-2 text-sm">
+                <li><a href="#synthese" class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full shadow-sm hover:border-ocean-brand hover:text-ocean-brand transition-colors">📊 Synthèse</a></li>
+                <li><a href="#creneaux" class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full shadow-sm hover:border-ocean-brand hover:text-ocean-brand transition-colors">🎯 Créneaux</a></li>
+                <li><a href="#spots" class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full shadow-sm hover:border-ocean-brand hover:text-ocean-brand transition-colors">📍 Spots</a></li>
+                <li><a href="#faq" class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full shadow-sm hover:border-ocean-brand hover:text-ocean-brand transition-colors">❓ FAQ</a></li>
+            </ul>
+        </nav>
 
         <main>
             <section class="mb-12">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[560px]">
                     <div class="flex flex-col lg:h-full lg:min-h-0 lg:order-2">
-                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Carte des conditions à venir</h2>
+                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Carte Kayak des conditions à venir</h2>
                         <p class="text-sm text-slate-500 mb-4">Aperçu pour l'heure qui vient : vent, houle et marée pour chaque spot.</p>
                         <div id="map" class="w-full min-h-[320px] lg:min-h-0 lg:flex-1 rounded-lg border border-slate-200 shadow-sm z-0"></div>
                     </div>
                     <div class="flex flex-col lg:h-full lg:min-h-0 lg:order-1">
-                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Le kayak météo des Sables d'Olonne</h2>
+                        <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">La météo des Sables-d'Olonne</h2>
                         <p class="text-slate-600 leading-relaxed">
                             <strong><?= htmlspecialchars($siteName) ?></strong> analyse en temps réel
                             <mark class="bg-yellow-200 px-1 rounded">le vent, la houle et les marées</mark>
@@ -204,7 +212,7 @@ $faqItems = [
                                 <?php endif; ?>
                                 <?php if (($currentWeather['tide_direction'] ?? null) !== null): ?>
                                 <div class="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-lg px-3 py-2">
-                                    <span class="text-lg"><?= $currentWeather['tide_direction'] === 'montante' ? '⬆️' : ($currentWeather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
+                                    <span class="text-lg"><?= tideDirectionIcon($currentWeather['tide_direction']) ?></span>
                                     <div>
                                         <div class="font-bold text-slate-900">Marée <?= $currentWeather['tide_direction'] ?></div>
                                         <?php if ($currentWeather['tide_next_high']): ?><div class="text-xs text-slate-500">Pleine mer <?= $currentWeather['tide_next_high'] ?></div><?php endif; ?>
@@ -214,14 +222,17 @@ $faqItems = [
                             </div>
                         <?php endif; ?>
 
-                        <img src="assets/kayak.jpg" alt="Sortie kayak aux Sables d'Olonne" class="mt-4 w-full h-56 lg:h-auto lg:min-h-0 lg:flex-1 object-cover rounded-lg border border-slate-200 shadow-sm">
+                        <div class="tape-photo relative mt-4 w-full h-56 lg:h-auto lg:min-h-0 lg:flex-1 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                            <span class="tape tape-yellow" aria-hidden="true"></span>
+                            <img src="assets/kayak.jpg" alt="Sortie kayak aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <section class="mb-12">
+            <section id="synthese" class="mb-12 scroll-mt-6">
                 <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">
-                    Synthèse des 7 prochains jours
+                    Synthèse météorologique des 7 prochains jours
                     <?php if ($todayIdeal && $todayIdeal['hour']): ?>
                         <span class="text-base font-semibold text-ocean-brand">— Créneau idéal <?= $todayIdeal['hour'] ?></span>
                     <?php endif; ?>
@@ -232,64 +243,72 @@ $faqItems = [
                     s'estompe : les prévisions à J+1 sont bien plus fiables qu'à J+7.
                 </p>
 
-                <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg shadow-sm">
-                    <table class="min-w-full text-sm text-left">
-                        <thead class="bg-ocean-100">
-                            <tr>
-                                <th class="p-3 font-bold text-slate-900">Les meilleurs spots</th>
-                                <?php for ($d = 0; $d < 7; $d++): ?>
-                                    <?php
-                                        $headerDay = (new DateTime())->modify("+$d days");
-                                        $headerOpacity = dayFadeOpacity($d);
-                                        $headerWeather = $idealDepartureHours[$headerDay->format('Y-m-d')]['weather'] ?? null;
-                                        $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
-                                    ?>
-                                    <th class="p-3 text-center font-bold text-slate-900" style="opacity: <?= $headerOpacity ?>">
-                                        <?= $dayHeaderFormatter->format($headerDay) ?>
-                                        <br>
-                                        <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
-                                        <?php if ($headerWeather): ?>
-                                            <div class="mt-1 text-[10px] font-normal text-slate-500 leading-tight space-y-0.5">
-                                                <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
-                                                <?php if ($headerWeather['wind_speed'] !== null): ?><div>💨 <?= round($headerWeather['wind_speed']) ?> km/h</div><?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </th>
-                                <?php endfor; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
+                <div class="overflow-x-auto">
+                    <div class="min-w-[760px]">
+                        <!-- Météo par jour : hors du tableau, mais alignée sur les mêmes colonnes -->
+                        <div class="grid grid-cols-[minmax(180px,1.6fr)_repeat(7,minmax(88px,1fr))] mb-2">
+                            <div></div>
+                            <?php for ($d = 0; $d < 7; $d++): ?>
+                                <?php
+                                    $headerDay = (new DateTime())->modify("+$d days");
+                                    $headerOpacity = dayFadeOpacity($d);
+                                    $headerWeather = $idealDepartureHours[$headerDay->format('Y-m-d')]['weather'] ?? null;
+                                    $headerWx = $headerWeather ? weatherCodeToLabel($headerWeather['weather_code'] ?? null) : null;
+                                ?>
+                                <div class="text-center text-[11px] text-slate-500 leading-tight px-1" style="opacity: <?= $headerOpacity ?>">
+                                    <?php if ($headerWeather): ?>
+                                        <?php if ($headerWx): ?><div><?= $headerWx['icon'] ?> <?php if ($headerWeather['air_temperature'] !== null): ?><?= round($headerWeather['air_temperature']) ?>°C<?php endif; ?></div><?php endif; ?>
+                                        <?php if ($headerWeather['wind_speed'] !== null): ?><div>💨 <?= round($headerWeather['wind_speed']) ?> km/h</div><?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+
+                        <!-- Grille CSS (garantit l'alignement exact avec la ligne météo ci-dessus) -->
+                        <div class="grid grid-cols-[minmax(180px,1.6fr)_repeat(7,minmax(88px,1fr))] bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden" role="table" aria-label="Synthèse des 7 prochains jours par spot">
+                            <div class="p-3 font-bold text-slate-900 bg-ocean-100" role="columnheader">Les meilleurs spots</div>
+                            <?php for ($d = 0; $d < 7; $d++): ?>
+                                <?php
+                                    $headerDay = (new DateTime())->modify("+$d days");
+                                    $headerOpacity = dayFadeOpacity($d);
+                                ?>
+                                <div class="p-3 text-center font-bold text-slate-900 bg-ocean-100" role="columnheader" style="opacity: <?= $headerOpacity ?>">
+                                    <?= $dayHeaderFormatter->format($headerDay) ?>
+                                    <br>
+                                    <span class="font-normal text-xs text-slate-500"><?= $headerDay->format('d/m') ?></span>
+                                </div>
+                            <?php endfor; ?>
+
                             <?php foreach ($groupedForecasts as $group): ?>
-                            <tr class="border-b border-slate-200 last:border-0">
-                                <td class="p-3 font-medium text-slate-800">
+                                <div class="p-3 font-medium text-slate-800 border-t border-slate-200" role="cell">
                                     <?php foreach ($group['spots'] as $i => $spot): ?>
                                         <?php if ($i > 0): ?><span class="text-slate-200">•</span> <?php endif; ?>
                                         <?php $parts = splitSpotName($spot['name']); ?>
                                         <?= htmlspecialchars($parts['main']) ?><?php if ($parts['detail']): ?> <span class="text-[10px] text-slate-400 opacity-70"><?= htmlspecialchars($parts['detail']) ?></span><?php endif; ?>
                                     <?php endforeach; ?>
-                                </td>
+                                </div>
                                 <?php foreach ($group['daily_status'] as $d => $daily_status): ?>
                                     <?php
                                         $cellDay = (new DateTime())->modify("+$d days");
                                         $cellOpacity = dayFadeOpacity($d);
                                         $groupTitle = htmlspecialchars(implode(', ', array_map(fn($s) => $s['name'], $group['spots']))) . ' — ' . ucfirst($dateFormatter->format($cellDay));
+                                        $weatherItems = formatWeatherForDisplay($daily_status['weather'] ?? null);
                                     ?>
-                                    <td class="p-3 text-center" style="opacity: <?= $cellOpacity ?>">
-                                        <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
-                                            <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover border-2 border-white shadow-sm" loading="lazy">
+                                    <div class="p-3 text-center border-t border-slate-200" role="cell" style="opacity: <?= $cellOpacity ?>">
+                                        <button type="button" class="info-trigger" data-title="<?= $groupTitle ?>" data-status="<?= htmlspecialchars($daily_status['status']) ?>" data-reasons='<?= htmlspecialchars(json_encode($daily_status['reasons']), ENT_QUOTES) ?>' data-weather='<?= htmlspecialchars(json_encode($weatherItems), ENT_QUOTES) ?>' title="<?= htmlspecialchars(implode(', ', $daily_status['reasons'])) ?>">
+                                            <img src="assets/<?= statusIconFile($daily_status['status']) ?>" alt="<?= htmlspecialchars($daily_status['status']) ?>" width="28" height="28" class="h-7 w-7 mx-auto rounded-full object-cover border-2 border-white/70 ring-1 ring-slate-900/10 shadow-md" loading="lazy">
                                         </button>
-                                    </td>
+                                    </div>
                                 <?php endforeach; ?>
-                            </tr>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Touchez une icône pour voir le détail des raisons.</p>
+                <p class="text-xs text-slate-400 mt-2">Touchez une icône pour voir le détail des raisons et de la météo.</p>
             </section>
 
-            <section>
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Créneaux favorables</h2>
+            <section id="creneaux" class="scroll-mt-6">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Les prochains créneaux kayak à ne pas manquer</h2>
                 <p class="text-sm text-slate-500 mb-4">Ouvrez un jour pour voir le détail heure par heure et savoir où pagayer.</p>
                 <div class="space-y-3">
                     <?php if (empty($slotsByDay)): ?>
@@ -312,11 +331,13 @@ $faqItems = [
                                 $dayDate = new DateTime($day);
                                 $dayScore = $dayScores[$day]['score'] ?? null;
                                 $isDayIndicative = $dayDate > $indicativeCutoff;
+                                $dayWx = weatherCodeToLabel($idealDepartureHours[$day]['weather']['weather_code'] ?? null);
                             ?>
                             <details class="group bg-white border border-slate-200 rounded-lg shadow-sm" <?= $isFirstDayAccordion ? 'open' : '' ?>>
                                 <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none list-none">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <img src="assets/<?= dayScoreIconFile($dayScore) ?>" alt="" width="24" height="24" class="h-6 w-6 rounded-full object-cover border-2 border-white shadow-sm shrink-0">
+                                        <img src="assets/<?= dayScoreIconFile($dayScore) ?>" alt="" width="24" height="24" class="h-6 w-6 rounded-full object-cover border-2 border-white/70 ring-1 ring-slate-900/10 shadow-md shrink-0">
+                                        <span class="text-lg" title="<?= htmlspecialchars($dayWx['label']) ?>"><?= $dayWx['icon'] ?></span>
                                         <span class="font-heading font-bold text-lg text-slate-900 truncate"><?= ucfirst($dateFormatter->format($dayDate)) ?></span>
                                         <?php if ($isDayIndicative): ?>
                                             <span class="text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-full shrink-0">Indicatif</span>
@@ -411,7 +432,7 @@ $faqItems = [
 
                                                     <?php if ($showTide): ?>
                                                     <div class="col-span-2 sm:col-span-4 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
-                                                        <span><?= $weather['tide_direction'] === 'montante' ? '⬆️' : ($weather['tide_direction'] === 'descendante' ? '⬇️' : '➡️') ?></span>
+                                                        <span><?= tideDirectionIcon($weather['tide_direction']) ?></span>
                                                         <span>
                                                             Marée <?= $weather['tide_direction'] ?>
                                                             <?php if ($weather['tide_next_high']): ?><span class="text-slate-400">· pleine mer <?= $weather['tide_next_high'] ?></span><?php endif; ?>
@@ -455,7 +476,10 @@ $faqItems = [
                         seul le vent compte — pas de marée, pas de houle, un terrain idéal pour progresser sans stress.
                     </p>
 
-                    <img src="assets/kayak2.jpg" alt="Kayak posé sur les rochers aux Sables d'Olonne" class="w-full h-64 object-cover rounded-lg border border-slate-200 shadow-sm my-2">
+                    <div class="tape-photo relative w-full h-64 overflow-hidden rounded-lg border border-slate-200 shadow-sm my-2">
+                        <span class="tape tape-pink" aria-hidden="true"></span>
+                        <img src="assets/kayak2.jpg" alt="Kayak posé sur les rochers aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
+                    </div>
 
                     <h3 class="font-heading text-lg font-bold text-slate-900 pt-2">La sécurité avant la sortie, pas pendant</h3>
                     <ul class="space-y-1 list-none pl-0">
@@ -474,22 +498,25 @@ $faqItems = [
                         ajuste ton itinéraire vers un spot plus abrité. Si c'est rouge, la mer sera toujours là demain.
                     </p>
 
-                    <img src="assets/kaya3.jpg" alt="Kayak au coucher de soleil aux Sables d'Olonne" class="w-full h-64 object-cover rounded-lg border border-slate-200 shadow-sm my-2">
+                    <div class="tape-photo relative w-full h-64 overflow-hidden rounded-lg border border-slate-200 shadow-sm my-2">
+                        <span class="tape tape-blue" aria-hidden="true"></span>
+                        <img src="assets/kaya3.jpg" alt="Kayak au coucher de soleil aux Sables d'Olonne" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
+                    </div>
                 </div>
             </section>
 
-            <section class="mt-12 bg-white border border-slate-200 rounded-lg shadow-sm p-6 md:p-8">
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Tous les spots, secteur par secteur</h2>
+            <section id="spots" class="mt-12 scroll-mt-6 bg-white border border-slate-200 rounded-lg shadow-sm p-6 md:p-8">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Tous les spots kayak, secteur par secteur</h2>
                 <p class="text-sm text-slate-500 mb-6">
                     <?= count($spots) ?> points de mise à l'eau suivis autour des Sables d'Olonne, de Brem-sur-Mer et de
                     Talmont-Saint-Hilaire, classés par secteur géographique.
                 </p>
                 <?php
                     $sectorImages = [
-                        'sables_coast' => ['src' => 'assets/cote.jpg', 'alt' => 'La côte des Sables d\'Olonne'],
-                        'talmont_estuary' => ['src' => 'assets/estuaire.jpg', 'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire'],
-                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et Olonne-sur-Mer'],
-                        'ile_olonne_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais au nord de L\'Île-d\'Olonne'],
+                        'sables_coast' => ['src' => 'assets/cote.jpg', 'alt' => 'La côte des Sables d\'Olonne', 'tape' => 'tape-mint'],
+                        'talmont_estuary' => ['src' => 'assets/estuaire.jpg', 'alt' => 'L\'estuaire du Payré à Talmont-Saint-Hilaire', 'tape' => 'tape-coral'],
+                        'brem_north_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais entre Brem-sur-Mer et Olonne-sur-Mer', 'tape' => 'tape-yellow'],
+                        'ile_olonne_marais' => ['src' => 'assets/maree.jpg', 'alt' => 'Le marais au nord de L\'Île-d\'Olonne', 'tape' => 'tape-pink'],
                     ];
                 ?>
                 <div class="space-y-8">
@@ -499,7 +526,10 @@ $faqItems = [
                         <?php $sectorImage = $sectorImages[$sectorId] ?? null; ?>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <?php if ($sectorImage): ?>
-                                <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="w-full h-32 sm:h-auto sm:w-48 object-cover rounded-lg border border-slate-200 shadow-sm shrink-0">
+                                <div class="tape-photo relative w-full h-32 sm:h-auto sm:w-48 overflow-hidden rounded-lg border border-slate-200 shadow-sm shrink-0">
+                                    <span class="tape <?= $sectorImage['tape'] ?>" aria-hidden="true"></span>
+                                    <img src="<?= $sectorImage['src'] ?>" alt="<?= htmlspecialchars($sectorImage['alt']) ?>" class="parallax-img absolute inset-0 w-full h-full object-cover" loading="lazy">
+                                </div>
                             <?php endif; ?>
                             <div>
                                 <h3 class="font-heading text-lg font-bold text-slate-900"><?= htmlspecialchars($sector['name']) ?></h3>
@@ -519,8 +549,8 @@ $faqItems = [
                 </div>
             </section>
 
-            <section class="mt-12 mb-4">
-                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Questions fréquentes</h2>
+            <section id="faq" class="mt-12 mb-4 scroll-mt-6">
+                <h2 class="font-heading text-2xl font-bold text-slate-900 mb-2">Questions fréquentes pour le kayak aux Sables-d'Olonne</h2>
                 <p class="text-sm text-slate-500 mb-6">Ce que tu dois savoir pour lire les créneaux et sortir en sécurité.</p>
                 <div class="space-y-2">
                     <?php foreach ($faqItems as $item): ?>
@@ -555,6 +585,11 @@ $faqItems = [
                 <div id="info-sheet-content" class="p-4 space-y-3 text-sm text-slate-600"></div>
             </div>
         </div>
+
+        <!-- Retour en haut de page -->
+        <button type="button" id="back-to-top" aria-label="Retour en haut de la page" class="fixed bottom-6 right-6 z-30 hidden h-11 w-11 items-center justify-center rounded-full bg-ocean-brand text-white shadow-lg hover:bg-ocean-action transition-colors">
+            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+        </button>
 
         <!-- Données pour la carte et le panneau d'info -->
         <script>
