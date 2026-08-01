@@ -115,19 +115,23 @@ function formatWeatherForDisplay(?array $weather): array
     if ($weather['air_temperature'] !== null) {
         $items[] = ['icon' => '🌡️', 'label' => "Température de l'air", 'value' => round($weather['air_temperature']) . '°C'];
     }
+    if ($weather['water_temperature'] !== null) {
+        $items[] = ['icon' => '🌊', 'label' => "Température de l'eau", 'value' => round($weather['water_temperature']) . '°C'];
+    }
     if ($weather['uv_index'] !== null) {
         $items[] = ['icon' => '☀️', 'label' => 'Indice UV', 'value' => 'UV ' . round($weather['uv_index'], 1)];
     }
     if ($weather['wind_speed'] !== null) {
         $gusts = $weather['wind_gusts'] !== null ? ' (rafales ' . round($weather['wind_gusts']) . ' km/h)' : '';
-        $direction = $weather['wind_direction'] !== null ? ' — ' . $weather['wind_direction'] . '°' : '';
+        $direction = '';
+        if ($weather['wind_direction'] !== null) {
+            $arrow = '<svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-3.5 w-3.5 align-[-2px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="transform: rotate(' . (int) $weather['wind_direction'] . 'deg)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 14l-4-4m4 4l4-4" /></svg>';
+            $direction = ' — ' . $arrow . ' ' . $weather['wind_direction'] . '°';
+        }
         $items[] = ['icon' => '💨', 'label' => 'Vent', 'value' => round($weather['wind_speed']) . ' km/h' . $gusts . $direction];
     }
     if ($weather['swell_height'] !== null) {
         $items[] = ['icon' => '🌊', 'label' => 'Houle', 'value' => $weather['swell_height'] . ' m'];
-    }
-    if ($weather['water_temperature'] !== null) {
-        $items[] = ['icon' => '🌊', 'label' => "Température de l'eau", 'value' => round($weather['water_temperature']) . '°C'];
     }
     if (($weather['tide_direction'] ?? null) !== null) {
         $nextHigh = $weather['tide_next_high'] ? ' — pleine mer ' . $weather['tide_next_high'] : '';

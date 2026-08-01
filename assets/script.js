@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!weatherItems || weatherItems.length === 0) return;
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'grid grid-cols-2 gap-2 pt-3 mt-1 border-t border-slate-100';
+        wrapper.className = 'flex flex-col gap-2 pt-3 mt-1 border-t border-slate-100';
 
         weatherItems.forEach(function (item) {
             const cell = document.createElement('div');

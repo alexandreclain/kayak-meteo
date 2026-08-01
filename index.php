@@ -248,7 +248,8 @@ $faqItems = [
                 <?php
                     // Largeurs partagées entre la table météo et la table de données : deux vraies
                     // <table> distinctes, alignées via des <col> identiques (table-layout: fixed).
-                    $colWidths = array_merge([30], array_fill(0, 7, 10));
+                    $firstColWidth = 36;
+                    $colWidths = array_merge([$firstColWidth], array_fill(0, 7, (100 - $firstColWidth) / 7));
                 ?>
                 <div class="overflow-x-auto">
                     <div class="min-w-[760px]">
@@ -410,8 +411,8 @@ $faqItems = [
                                                 $wx = weatherCodeToLabel($weather['weather_code'] ?? null);
                                                 $showTide = !empty($slot['details']['MARAIS']) && ($weather['tide_direction'] ?? null) !== null;
                                             ?>
-                                                <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-600 text-left">
-                                                    <!-- Ligne 1 : météo, UV, eau, (case vide) -->
+                                                <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 text-left">
+                                                    <!-- Ligne 1 : météo, UV, température de l'air -->
                                                     <div class="flex items-center gap-1.5" title="Conditions générales">
                                                         <span><?= $wx['icon'] ?></span>
                                                         <span><?= $wx['label'] ?></span>
@@ -422,15 +423,14 @@ $faqItems = [
                                                         <span>UV <?= round($weather['uv_index'], 1) ?></span>
                                                     </div>
                                                     <?php endif; ?>
-                                                    <?php if ($weather['water_temperature'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Température de l'eau">
-                                                        <span>🌊</span>
-                                                        <span><?= round($weather['water_temperature']) ?>°C</span>
+                                                    <?php if ($weather['air_temperature'] !== null): ?>
+                                                    <div class="flex items-center gap-1.5" title="Température de l'air">
+                                                        <span>🌡️</span>
+                                                        <span><?= round($weather['air_temperature']) ?>°C</span>
                                                     </div>
                                                     <?php endif; ?>
-                                                    <div class="hidden sm:block" aria-hidden="true"></div>
 
-                                                    <!-- Ligne 2 : vent (+ direction), houle, température de l'air -->
+                                                    <!-- Ligne 2 : vent (+ direction), houle, température de l'eau (juste sous celle de l'air) -->
                                                     <div class="flex items-center gap-1.5" title="Vent moyen (rafales) et direction">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                                                         <span>
@@ -445,15 +445,15 @@ $faqItems = [
                                                         <span><?= $weather['swell_height'] ?> m</span>
                                                     </div>
                                                     <?php endif; ?>
-                                                    <?php if ($weather['air_temperature'] !== null): ?>
-                                                    <div class="flex items-center gap-1.5" title="Température de l'air">
-                                                        <span>🌡️</span>
-                                                        <span><?= round($weather['air_temperature']) ?>°C</span>
+                                                    <?php if ($weather['water_temperature'] !== null): ?>
+                                                    <div class="flex items-center gap-1.5" title="Température de l'eau">
+                                                        <span>🌊</span>
+                                                        <span><?= round($weather['water_temperature']) ?>°C</span>
                                                     </div>
                                                     <?php endif; ?>
 
                                                     <?php if ($showTide): ?>
-                                                    <div class="col-span-2 sm:col-span-4 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
+                                                    <div class="col-span-2 sm:col-span-3 flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100" title="Marée">
                                                         <span><?= tideDirectionIcon($weather['tide_direction']) ?></span>
                                                         <span>
                                                             Marée <?= $weather['tide_direction'] ?>
