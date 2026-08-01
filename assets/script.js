@@ -151,6 +151,15 @@ document.addEventListener('DOMContentLoaded', function () {
     updateParallax();
 });
 
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function fetchKayakSpots(map) {
     const overpassMirrors = [
         'https://overpass-api.de/api/interpreter',
@@ -241,9 +250,9 @@ out skel qt;`;
                 }
 
                 const tags = el.tags || {};
-                const name = tags.name || 'Cale de mise à l\'eau';
-                const accessType = tags.leisure || tags.waterway || tags.canoe || tags.sport || 'Accès kayak';
-                const surface = tags.surface ? '<br>Surface : ' + tags.surface : '';
+                const name = escapeHtml(tags.name || 'Cale de mise à l\'eau');
+                const accessType = escapeHtml(tags.leisure || tags.waterway || tags.canoe || tags.sport || 'Accès kayak');
+                const surface = tags.surface ? '<br>Surface : ' + escapeHtml(tags.surface) : '';
 
                 L.marker([lat, lon], { icon: kayakSpotIcon })
                     .addTo(map)
